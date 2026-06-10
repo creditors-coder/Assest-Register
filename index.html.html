@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AssetTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#e8eaf0;--muted:#7c8499;
+  --accent:#4f8ef7;--accent2:#7c5cfc;
+  --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.logo-mark{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;}
+.logo-text{font-size:14px;font-weight:600;letter-spacing:-0.3px;}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px;font-family:'JetBrains Mono',monospace;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--muted);cursor:pointer;transition:color .15s,background .15s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.04);}
+.nav-item.active{color:var(--accent);background:rgba(79,142,247,0.1);font-weight:500;}
+.nav-icon{font-size:16px;width:18px;text-align:center;}
+.nav-section{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--muted);padding:16px 20px 6px;text-transform:uppercase;}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);}
+.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:6px;vertical-align:middle;}
+.sync-dot.offline{background:var(--muted);}
+.sync-dot.syncing{background:var(--warning);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-label{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:15px;font-weight:600;flex:1;}
+.search-wrap{position:relative;flex:1;max-width:360px;}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
+.search{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
+.search:focus{border-color:var(--accent);}
+.search::placeholder{color:var(--muted);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:opacity .15s,transform .1s;border:none;}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{opacity:.88;}
+.btn-ghost{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border2);}
+.btn-danger{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.2);}
+.content{padding:28px 32px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.stat-value{font-size:26px;font-weight:600;letter-spacing:-.5px;font-family:'JetBrains Mono',monospace;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.filter-select{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;outline:none;transition:border-color .15s;}
+.filter-select:focus{border-color:var(--accent);}
+.filter-label{font-size:12px;color:var(--muted);margin-left:4px;}
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.table-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.table-title{font-size:13px;font-weight:600;}
+.table-count{font-size:12px;color:var(--muted);}
+.table-actions{margin-left:auto;display:flex;gap:8px;}
+table{width:100%;border-collapse:collapse;}
+thead th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--text);}
+thead th.sorted{color:var(--accent);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,0.025);cursor:pointer;}
+td{padding:11px 14px;font-size:13px;vertical-align:middle;white-space:nowrap;}
+.asset-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.asset-name{font-weight:500;}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:500;}
+.badge-active{background:rgba(34,197,94,.15);color:#4ade80;}
+.badge-inactive{background:rgba(239,68,68,.12);color:#f87171;}
+.badge-maintenance{background:rgba(245,158,11,.15);color:#fbbf24;}
+.badge-retired{background:rgba(124,132,153,.2);color:#9ca3af;}
+.condition-badge{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:500;}
+.cond-excellent{background:rgba(34,197,94,.12);color:#4ade80;}
+.cond-good{background:rgba(56,189,248,.12);color:#38bdf8;}
+.cond-fair{background:rgba(245,158,11,.12);color:#fbbf24;}
+.cond-poor{background:rgba(239,68,68,.12);color:#f87171;}
+.warranty-ok{color:var(--success);font-size:12px;}
+.warranty-soon{color:var(--warning);font-size:12px;}
+.warranty-expired{color:var(--danger);font-size:12px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);width:660px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:28px;}
+.modal-head{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+.modal-title{font-size:16px;font-weight:600;flex:1;}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;display:flex;align-items:center;padding:4px;}
+.modal-close:hover{color:var(--text);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.form-input,.form-select,.form-textarea{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;width:100%;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-textarea{resize:vertical;min-height:72px;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;border-top:1px solid var(--border);padding-top:20px;}
+.detail-panel{position:fixed;top:0;right:0;bottom:0;width:400px;background:var(--bg2);border-left:1px solid var(--border);z-index:150;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:28px;}
+.detail-panel.open{transform:translateX(0);}
+.detail-head{display:flex;align-items:center;margin-bottom:24px;}
+.detail-title{font-size:15px;font-weight:600;flex:1;}
+.detail-row{display:flex;flex-direction:column;gap:3px;margin-bottom:16px;}
+.detail-key{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.detail-val{font-size:13px;}
+.detail-actions{display:flex;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:999;transform:translateY(60px);opacity:0;transition:all .2s;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* Setup screen */
+.setup-screen{max-width:620px;margin:0 auto;padding:48px 32px;}
+.setup-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--accent);margin-bottom:24px;}
+.setup-title{font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:10px;}
+.setup-sub{color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:36px;}
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{display:flex;gap:0;position:relative;}
+.step:not(:last-child)::before{content:'';position:absolute;left:15px;top:36px;bottom:0;width:1px;background:var(--border);}
+.step-num{width:32px;height:32px;border-radius:50%;background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.25);color:var(--accent);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:16px;margin-top:2px;}
+.step-body{flex:1;padding-bottom:28px;}
+.step-label{font-size:13px;font-weight:500;margin-bottom:4px;}
+.step-desc{font-size:12px;color:var(--muted);line-height:1.7;}
+.step-desc code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--accent);}
+.config-fields{display:flex;flex-direction:column;gap:12px;margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
+.config-field-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.config-connect-btn{margin-top:20px;width:100%;padding:11px;font-size:14px;justify-content:center;}
+
+/* Dashboard */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
+.dash-card-title{font-size:13px;font-weight:600;margin-bottom:16px;}
+.bar-row{margin-bottom:10px;}
+.bar-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;}
+.bar-track{height:6px;background:var(--bg3);border-radius:3px;}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+.spinner{width:28px;height:28px;margin:48px auto 12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:64px 24px;}
+.empty-title{font-size:15px;font-weight:500;margin-bottom:6px;}
+.empty-sub{font-size:13px;color:var(--muted);}
+.hidden{display:none!important;}
+.text-muted{color:var(--muted);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}.sidebar{display:none}.main{margin-left:0}.detail-panel{width:100%}.dash-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.content{padding:16px}.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">📋</div>
+        <div>
+          <div class="logo-text">AssetTrack</div>
+          <div class="logo-sub">IT Register</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-section">Menu</div>
+    <button class="nav-item active" onclick="showView('register')"><span class="nav-icon">📊</span> Asset Register</button>
+    <button class="nav-item" onclick="showView('dashboard')"><span class="nav-icon">📈</span> Dashboard</button>
+    <button class="nav-item" onclick="showView('setup')"><span class="nav-icon">⚙️</span> Settings</button>
+    <div class="sidebar-footer">
+      <span class="sync-dot offline" id="sync-dot"></span>
+      <span class="sync-label" id="sync-label">Not connected</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="view-title">Asset Register</div>
+      <div class="search-wrap">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search" id="search" placeholder="Search assets…" oninput="renderTable()">
+      </div>
+      <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export</button>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Add Asset</button>
+    </div>
+
+    <div class="content">
+
+      <!-- Register -->
+      <div id="view-register">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-value" id="s-total">—</div></div>
+          <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)" id="s-active">—</div></div>
+          <div class="stat-card"><div class="stat-label">Maintenance</div><div class="stat-value" style="color:var(--warning)" id="s-maint">—</div></div>
+          <div class="stat-card"><div class="stat-label">Warranty Alert</div><div class="stat-value" style="color:var(--danger)" id="s-warranty">—</div><div class="stat-sub">expiring ≤ 90 days</div></div>
+        </div>
+        <div class="filter-bar">
+          <span class="filter-label">Filter:</span>
+          <select class="filter-select" id="f-status" onchange="renderTable()">
+            <option value="">All Statuses</option>
+            <option>Active</option><option>Inactive</option><option>Maintenance</option><option>Retired</option>
+          </select>
+          <select class="filter-select" id="f-dept" onchange="renderTable()"><option value="">All Departments</option></select>
+          <select class="filter-select" id="f-cond" onchange="renderTable()">
+            <option value="">All Conditions</option>
+            <option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header">
+            <span class="table-title">Assets</span>
+            <span class="table-count" id="tbl-count"></span>
+          </div>
+          <div id="table-container">
+            <div class="empty-state">
+              <div style="font-size:36px;margin-bottom:12px;opacity:.3">📋</div>
+              <div class="empty-title">No assets yet</div>
+              <div class="empty-sub">Connect Firebase in Settings, then add your first asset.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="view-dashboard" class="hidden">
+        <div style="margin-bottom:24px"><div style="font-size:18px;font-weight:600;margin-bottom:4px">Dashboard</div><div style="color:var(--muted);font-size:13px">Fleet overview</div></div>
+        <div id="dashboard-content" class="dash-grid"></div>
+      </div>
+
+      <!-- Setup -->
+      <div id="view-setup" class="hidden">
+        <div class="setup-screen">
+          <div class="setup-badge">🔥 Firebase Setup</div>
+          <div class="setup-title">Connect your database</div>
+          <div class="setup-sub">Firebase is Google's free real-time database. All your team members will see live updates the moment anyone makes a change. Follow these steps — it takes about 5 minutes.</div>
+
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <div class="step-label">Create a Firebase project</div>
+                <div class="step-desc">Go to <code>console.firebase.google.com</code> → Add project → give it a name (e.g. "AssetTrack") → Continue. Disable Google Analytics if you don't need it → Create project.</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <div class="step-label">Create a Realtime Database</div>
+                <div class="step-desc">In the left sidebar → Build → Realtime Database → Create Database → choose your region → Start in <b>test mode</b> (allows read/write for 30 days — you can secure it later) → Enable.</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <div class="step-label">Get your config keys</div>
+                <div class="step-desc">Project Settings (gear icon) → General → Your apps → click Web icon (<code>&lt;/&gt;</code>) → Register app → copy the <code>firebaseConfig</code> values below.</div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-body">
+                <div class="step-label">Paste your config and connect</div>
+                <div class="step-desc">Fill in the fields below, click Connect, and your database is live.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-fields">
+            <div>
+              <div class="config-field-label">API Key</div>
+              <input class="form-input" id="cfg-apiKey" placeholder="AIzaSy…">
+            </div>
+            <div>
+              <div class="config-field-label">Auth Domain</div>
+              <input class="form-input" id="cfg-authDomain" placeholder="your-project.firebaseapp.com">
+            </div>
+            <div>
+              <div class="config-field-label">Database URL</div>
+              <input class="form-input" id="cfg-dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+            </div>
+            <div>
+              <div class="config-field-label">Project ID</div>
+              <input class="form-input" id="cfg-projectId" placeholder="your-project-id">
+            </div>
+            <button class="btn btn-primary config-connect-btn" onclick="saveAndConnect()">🔥 Connect to Firebase</button>
+            <div id="cfg-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-head">
+    <div class="detail-title" id="dp-name">—</div>
+    <button class="modal-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div id="dp-body"></div>
+  <div class="detail-actions">
+    <button class="btn btn-ghost" onclick="editFromDetail()">✏️ Edit</button>
+    <button class="btn btn-danger" onclick="deleteFromDetail()">🗑 Delete</button>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Add Asset</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Asset ID</label><input class="form-input" id="f-id" placeholder="e.g. IT-001"></div>
+      <div class="form-group"><label class="form-label">Asset Name</label><input class="form-input" id="f-name" placeholder="e.g. MacBook Pro 14"></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="f-cat">
+          <option>Laptop</option><option>Desktop</option><option>Monitor</option><option>Phone</option><option>Tablet</option><option>Printer</option><option>Network Equipment</option><option>Server</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="f-brand" placeholder="e.g. Apple"></div>
+      <div class="form-group"><label class="form-label">Model</label><input class="form-input" id="f-model" placeholder="e.g. A2442"></div>
+      <div class="form-group"><label class="form-label">Serial Number</label><input class="form-input" id="f-serial" placeholder="e.g. C02XA1234"></div>
+      <div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="f-assigned" placeholder="Full name"></div>
+      <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="f-dept" placeholder="e.g. Finance"></div>
+      <div class="form-group"><label class="form-label">Purchase Date</label><input class="form-input" id="f-purchase" type="date"></div>
+      <div class="form-group"><label class="form-label">Warranty Expiry</label><input class="form-input" id="f-warranty" type="date"></div>
+      <div class="form-group"><label class="form-label">Condition</label>
+        <select class="form-select" id="f-cond2"><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="f-status2"><option>Active</option><option>Inactive</option><option>Maintenance</option><option>Retired</option></select>
+      </div>
+      <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f-notes" placeholder="Any additional notes…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-msg"></span></div>
+
+<!-- Firebase SDK -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
+
+<script>
+// ── State ──
+let assets = {};
+let db = null;
+let assetsRef = null;
+let firebaseConfig = JSON.parse(localStorage.getItem('fbConfig') || 'null');
+let sortCol = 0, sortDir = 1;
+let editKey = null;
+let detailKey = null;
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  if (firebaseConfig) {
+    fillConfigForm();
+    initFirebase(firebaseConfig);
+  } else {
+    setSyncStatus('offline', 'Not connected');
+    showView('setup');
+  }
+});
+
+function fillConfigForm() {
+  if (!firebaseConfig) return;
+  document.getElementById('cfg-apiKey').value = firebaseConfig.apiKey || '';
+  document.getElementById('cfg-authDomain').value = firebaseConfig.authDomain || '';
+  document.getElementById('cfg-dbUrl').value = firebaseConfig.databaseURL || '';
+  document.getElementById('cfg-projectId').value = firebaseConfig.projectId || '';
+}
+
+// ── Firebase ──
+function saveAndConnect() {
+  const cfg = {
+    apiKey: document.getElementById('cfg-apiKey').value.trim(),
+    authDomain: document.getElementById('cfg-authDomain').value.trim(),
+    databaseURL: document.getElementById('cfg-dbUrl').value.trim(),
+    projectId: document.getElementById('cfg-projectId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.databaseURL) {
+    document.getElementById('cfg-status').textContent = '⚠️ API Key and Database URL are required.';
+    return;
+  }
+  document.getElementById('cfg-status').textContent = 'Connecting…';
+  localStorage.setItem('fbConfig', JSON.stringify(cfg));
+  firebaseConfig = cfg;
+  initFirebase(cfg);
+}
+
+function initFirebase(cfg) {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    db = firebase.database();
+    assetsRef = db.ref('assets');
+    setSyncStatus('syncing', 'Connecting…');
+    assetsRef.on('value', snap => {
+      assets = snap.val() || {};
+      setSyncStatus('online', 'Live');
+      renderAll();
+      document.getElementById('cfg-status').textContent = '✅ Connected!';
+    }, err => {
+      setSyncStatus('offline', 'Error');
+      showToast('❌ Firebase error: ' + err.message);
+      document.getElementById('cfg-status').textContent = '❌ ' + err.message;
+    });
+  } catch(e) {
+    setSyncStatus('offline', 'Config error');
+    showToast('❌ ' + e.message);
+    document.getElementById('cfg-status').textContent = '❌ ' + e.message;
+  }
+}
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = 'sync-dot' + (state !== 'online' ? ' ' + state : '');
+  document.getElementById('sync-label').textContent = label;
+}
+
+// ── Views ──
+function showView(view) {
+  ['register','dashboard','setup'].forEach(v => {
+    document.getElementById('view-'+v).classList.toggle('hidden', v !== view);
+  });
+  document.querySelectorAll('.nav-item').forEach((el,i) => {
+    el.classList.toggle('active', ['register','dashboard','setup'][i] === view);
+  });
+  const titles = {register:'Asset Register', dashboard:'Dashboard', setup:'Settings'};
+  document.getElementById('view-title').textContent = titles[view];
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'setup') fillConfigForm();
+}
+
+// ── Render ──
+function renderAll() {
+  renderStats();
+  renderTable();
+  renderDeptFilter();
+}
+
+function assetList() {
+  return Object.entries(assets).map(([k,v]) => ({...v, _key: k}));
+}
+
+function renderStats() {
+  const list = assetList();
+  document.getElementById('s-total').textContent = list.length;
+  document.getElementById('s-active').textContent = list.filter(a=>a.status==='Active').length;
+  document.getElementById('s-maint').textContent = list.filter(a=>a.status==='Maintenance').length;
+  document.getElementById('s-warranty').textContent = list.filter(a=>warrantyClass(a.warranty)!=='ok').length;
+}
+
+function renderDeptFilter() {
+  const depts = [...new Set(assetList().map(a=>a.dept).filter(Boolean))].sort();
+  const sel = document.getElementById('f-dept');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Departments</option>' + depts.map(d=>`<option${d===cur?' selected':''}>${esc(d)}</option>`).join('');
+}
+
+function renderTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fS = document.getElementById('f-status').value;
+  const fD = document.getElementById('f-dept').value;
+  const fC = document.getElementById('f-cond').value;
+
+  let data = assetList().filter(a => {
+    const txt = Object.values(a).join(' ').toLowerCase();
+    return (!q||txt.includes(q)) && (!fS||a.status===fS) && (!fD||a.dept===fD) && (!fC||a.cond===fC);
+  });
+
+  const keys = ['id','name','cat','brand','assigned','dept','warranty','cond','status'];
+  data.sort((a,b)=>(a[keys[sortCol]]||'').localeCompare(b[keys[sortCol]]||'')*sortDir);
+
+  document.getElementById('tbl-count').textContent = data.length + ' of ' + assetList().length;
+
+  const cols = ['Asset ID','Name','Category','Brand / Model','Assigned To','Department','Warranty','Condition','Status'];
+  const arr = i => sortCol===i?(sortDir===1?' ▲':' ▼'):'';
+
+  if (!data.length) {
+    document.getElementById('table-container').innerHTML = `<div class="empty-state"><div style="font-size:32px;margin-bottom:10px;opacity:.3">🔍</div><div class="empty-title">No assets match</div><div class="empty-sub">Try adjusting your search or filters.</div></div>`;
+    return;
+  }
+
+  let html = `<table><thead><tr>${cols.map((c,i)=>`<th class="${sortCol===i?'sorted':''}" onclick="sortBy(${i})">${c}${arr(i)}</th>`).join('')}</tr></thead><tbody>`;
+  data.forEach(a => {
+    const wc = warrantyClass(a.warranty);
+    html += `<tr onclick="openDetail('${a._key}')">
+      <td><span class="asset-id">${esc(a.id)}</span></td>
+      <td><span class="asset-name">${esc(a.name)}</span></td>
+      <td><span class="text-muted">${esc(a.cat)}</span></td>
+      <td>${esc(a.brand)}${a.model?` <span class="text-muted mono">${esc(a.model)}</span>`:''}</td>
+      <td>${esc(a.assigned)||'<span class="text-muted">—</span>'}</td>
+      <td>${esc(a.dept)||'<span class="text-muted">—</span>'}</td>
+      <td><span class="warranty-${wc}">${a.warranty?formatDate(a.warranty):'—'}</span></td>
+      <td>${condBadge(a.cond)}</td>
+      <td>${statusBadge(a.status)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('table-container').innerHTML = html;
+}
+
+function sortBy(col) { if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;} renderTable(); }
+
+// ── Detail Panel ──
+function openDetail(key) {
+  detailKey = key;
+  const a = assets[key];
+  if (!a) return;
+  document.getElementById('dp-name').textContent = a.name;
+  const wc = warrantyClass(a.warranty);
+  document.getElementById('dp-body').innerHTML = [
+    ['Asset ID', `<span class="mono">${esc(a.id)}</span>`],
+    ['Status', statusBadge(a.status)],
+    ['Condition', condBadge(a.cond)],
+    ['Category', esc(a.cat)],
+    ['Brand', esc(a.brand)],
+    ['Model', `<span class="mono">${esc(a.model)}</span>`],
+    ['Serial Number', `<span class="mono">${esc(a.serial)}</span>`],
+    ['Assigned To', esc(a.assigned)||'—'],
+    ['Department', esc(a.dept)||'—'],
+    ['Purchase Date', formatDate(a.purchase)],
+    ['Warranty Expiry', `<span class="warranty-${wc}">${formatDate(a.warranty)}</span>`],
+    ['Notes', esc(a.notes)||'—'],
+  ].map(([k,v])=>`<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${v}</div></div>`).join('');
+  document.getElementById('detail-panel').classList.add('open');
+}
+function closeDetail() { document.getElementById('detail-panel').classList.remove('open'); detailKey=null; }
+function editFromDetail() { openEditModal(detailKey); closeDetail(); }
+function deleteFromDetail() {
+  if (!detailKey) return;
+  const name = assets[detailKey]?.name || 'this asset';
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  assetsRef.child(detailKey).remove();
+  closeDetail();
+  showToast('🗑 Asset deleted');
+}
+
+// ── Modal ──
+function openAddModal() {
+  if (!assetsRef) { showToast('⚠️ Connect Firebase first in Settings'); showView('setup'); return; }
+  editKey = null;
+  document.getElementById('modal-title').textContent = 'Add Asset';
+  ['f-id','f-name','f-brand','f-model','f-serial','f-assigned','f-dept','f-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-purchase').value='';
+  document.getElementById('f-warranty').value='';
+  document.getElementById('f-cat').value='Laptop';
+  document.getElementById('f-cond2').value='Good';
+  document.getElementById('f-status2').value='Active';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function openEditModal(key) {
+  editKey = key;
+  const a = assets[key];
+  if (!a) return;
+  document.getElementById('modal-title').textContent = 'Edit Asset';
+  document.getElementById('f-id').value=a.id||'';
+  document.getElementById('f-name').value=a.name||'';
+  document.getElementById('f-brand').value=a.brand||'';
+  document.getElementById('f-model').value=a.model||'';
+  document.getElementById('f-serial').value=a.serial||'';
+  document.getElementById('f-assigned').value=a.assigned||'';
+  document.getElementById('f-dept').value=a.dept||'';
+  document.getElementById('f-notes').value=a.notes||'';
+  document.getElementById('f-purchase').value=a.purchase||'';
+  document.getElementById('f-warranty').value=a.warranty||'';
+  document.getElementById('f-cat').value=a.cat||'Laptop';
+  document.getElementById('f-cond2').value=a.cond||'Good';
+  document.getElementById('f-status2').value=a.status||'Active';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function saveAsset() {
+  if (!assetsRef) { showToast('⚠️ Not connected to Firebase'); return; }
+  const a = {
+    id: document.getElementById('f-id').value.trim(),
+    name: document.getElementById('f-name').value.trim(),
+    cat: document.getElementById('f-cat').value,
+    brand: document.getElementById('f-brand').value.trim(),
+    model: document.getElementById('f-model').value.trim(),
+    serial: document.getElementById('f-serial').value.trim(),
+    assigned: document.getElementById('f-assigned').value.trim(),
+    dept: document.getElementById('f-dept').value.trim(),
+    purchase: document.getElementById('f-purchase').value,
+    warranty: document.getElementById('f-warranty').value,
+    cond: document.getElementById('f-cond2').value,
+    status: document.getElementById('f-status2').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  if (!a.name) { showToast('⚠️ Asset name is required'); return; }
+  if (editKey) {
+    assetsRef.child(editKey).update(a);
+    showToast('✅ Asset updated');
+  } else {
+    assetsRef.push(a);
+    showToast('✅ Asset added');
+  }
+  closeModal();
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  const list = assetList();
+  if (!list.length) {
+    document.getElementById('dashboard-content').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">No data yet</div><div class="empty-sub">Add assets to see charts.</div></div>`;
+    return;
+  }
+  const grp = (key) => list.reduce((acc,a)=>{ const v=a[key]||'Unknown'; acc[v]=(acc[v]||0)+1; return acc; },{});
+  const barCard = (title, obj, color) => {
+    const max = Math.max(...Object.values(obj));
+    const rows = Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div class="bar-row">
+        <div class="bar-label"><span>${esc(k)}</span><span style="color:var(--muted)">${v}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${color}"></div></div>
+      </div>`).join('');
+    return `<div class="dash-card"><div class="dash-card-title">${title}</div>${rows}</div>`;
+  };
+  document.getElementById('dashboard-content').innerHTML =
+    barCard('By Status', grp('status'), 'var(--accent)') +
+    barCard('By Department', grp('dept'), 'var(--accent2)') +
+    barCard('By Category', grp('cat'), 'var(--success)') +
+    barCard('By Condition', grp('cond'), 'var(--warning)');
+}
+
+// ── Export ──
+function exportCSV() {
+  const list = assetList();
+  const header = 'Asset ID,Name,Category,Brand,Model,Serial Number,Assigned To,Department,Purchase Date,Warranty Expiry,Condition,Status,Notes';
+  const rows = list.map(a=>[a.id,a.name,a.cat,a.brand,a.model,a.serial,a.assigned,a.dept,a.purchase,a.warranty,a.cond,a.status,a.notes]
+    .map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
+  const blob = new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const el = document.createElement('a');
+  el.href=url; el.download='asset-register.csv'; el.click();
+  showToast('📥 CSV exported');
+}
+
+// ── Helpers ──
+function statusBadge(s) {
+  const m={Active:'badge-active',Inactive:'badge-inactive',Maintenance:'badge-maintenance',Retired:'badge-retired'};
+  return `<span class="badge ${m[s]||'badge-retired'}">${esc(s)||'—'}</span>`;
+}
+function condBadge(c) {
+  const m={Excellent:'cond-excellent',Good:'cond-good',Fair:'cond-fair',Poor:'cond-poor'};
+  return `<span class="condition-badge ${m[c]||''}">${esc(c)||'—'}</span>`;
+}
+function warrantyClass(d) {
+  if (!d) return 'expired';
+  const days=(new Date(d)-new Date())/86400000;
+  return days<0?'expired':days<90?'soon':'ok';
+}
+function formatDate(d) {
+  if (!d) return '—';
+  try{return new Date(d).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+let toastTimer;
+function showToast(msg,dur=3500){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();closeDetail();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){document.getElementById('search').focus();e.preventDefault();}
+});
+</script>
+</body>
+</html>
