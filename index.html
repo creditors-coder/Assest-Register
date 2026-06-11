@@ -238,11 +238,11 @@ tbody tr:hover td{background:#f8faff;cursor:pointer;}
 
 /* ── Modal ── */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(13,31,60,.45);
+  position:fixed;inset:0;background:rgba(13,31,60,.55);
   display:none;align-items:center;justify-content:center;z-index:200;
   backdrop-filter:blur(2px);
 }
-.modal-overlay.open{display:flex;}
+.modal-overlay.open{display:flex!important;}
 .modal{
   background:var(--surface);border-radius:var(--radius-lg);
   border:1px solid var(--border);width:500px;max-width:95vw;
@@ -529,6 +529,16 @@ body.dark .sync-pill { background: rgba(255,255,255,0.06); border-color: rgba(25
       <div class="config-badge">🔥 Firebase Setup</div>
       <div class="config-title">Connect your live database</div>
       <div class="config-sub">All data — assets, employees and history — is stored in Firebase and syncs live across every device and team member. Enter your Firebase config below once and it's saved permanently in this file.</div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:1.7;color:#92400e">
+        <strong>⚠️ Important — Firebase Rules:</strong> If you can't add assets or employees, your Firebase rules may have expired. Go to <strong>Firebase Console → Realtime Database → Rules</strong> and set them to:
+        <pre style="background:#fef3c7;border-radius:6px;padding:10px;margin-top:8px;font-size:12px;font-family:monospace;color:#78350f;overflow-x:auto">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+        Then click <strong>Publish</strong>.
+      </div>
       <div class="config-fields">
         <div class="field"><label>API Key</label><input type="text" id="cfg-apiKey" placeholder="AIzaSy…"></div>
         <div class="field"><label>Auth Domain</label><input type="text" id="cfg-authDomain" placeholder="yourproject.firebaseapp.com"></div>
@@ -682,7 +692,7 @@ function initFirebase(cfg) {
     empRef.on('value', snap => { employees = snap.val()||{}; renderEmployees(); });
     histRef.on('value', snap => { historyLog = snap.val()||{}; renderHistory(); });
     setSyncStatus('live','Live sync');
-    document.getElementById('cfg-status').textContent = '✅ Connected!';
+    document.getElementById('cfg-status').textContent = '✅ Connected! If saving fails, update Firebase rules to allow read/write.';
   } catch(e) {
     setSyncStatus('offline','Error');
     showToast('❌ Firebase error: ' + e.message);
@@ -779,16 +789,42 @@ function deleteAsset(key, e) {
 }
 
 function saveAsset() {
-  const id=document.getElementById('f-id').value.trim(), desc=document.getElementById('f-desc').value.trim();
-  if(!id||!desc){showToast('⚠️ Asset ID and description are required.');return;}
-  if(assetList().find(a=>a.id===id)){showToast('⚠️ Asset ID already exists.');return;}
-  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,status:document.getElementById('f-status').value,empId:'',issueDate:'',notes:document.getElementById('f-notes').value.trim(),createdAt:now()};
-  const logEntry={ts:now(),event:'added',assetId:a.id,desc:a.desc,empId:'',notes:'Added to register'};
-  if(assetsRef){assetsRef.push(a);histRef&&histRef.push(logEntry);}
-  else{assets['local_'+Date.now()]=a;historyLog['local_'+Date.now()]=logEntry;renderAssets();}
+  const id = document.getElementById('f-id').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  if (!id || !desc) { showToast('⚠️ Asset ID and Description are required.'); return; }
+  if (assetList().find(a => a.id === id)) { showToast('⚠️ Asset ID already exists. Use a unique ID.'); return; }
+  const a = {
+    id: id,
+    desc: desc,
+    cat: document.getElementById('f-cat').value,
+    brand: document.getElementById('f-brand').value.trim(),
+    serial: document.getElementById('f-serial').value.trim(),
+    pdate: document.getElementById('f-pdate').value,
+    value: parseFloat(document.getElementById('f-value').value) || 0,
+    warranty: document.getElementById('f-warranty').value,
+    status: document.getElementById('f-status').value || 'Available',
+    empId: '',
+    issueDate: '',
+    notes: document.getElementById('f-notes').value.trim(),
+    createdAt: now()
+  };
+  const logEntry = { ts: now(), event: 'added', assetId: a.id, desc: a.desc, empId: '', notes: 'Added to register' };
+  if (assetsRef) {
+    assetsRef.push(a).then(() => {
+      showToast('✅ Asset added successfully');
+    }).catch(err => {
+      showToast('❌ Firebase error: ' + err.message);
+      console.error(err);
+    });
+    if (histRef) histRef.push(logEntry);
+  } else {
+    assets['local_' + Date.now()] = a;
+    historyLog['local_' + Date.now()] = logEntry;
+    renderAssets();
+    showToast('✅ Asset added (local)');
+  }
   closeModal('modal-add-asset');
-  ['f-id','f-desc','f-brand','f-serial','f-pdate','f-value','f-warranty','f-notes'].forEach(id=>document.getElementById(id).value='');
-  showToast('✅ Asset added');
+  ['f-id','f-desc','f-brand','f-serial','f-pdate','f-value','f-warranty','f-notes'].forEach(fid => document.getElementById(fid).value = '');
 }
 
 // ── Serial numbers ──
@@ -865,13 +901,32 @@ function renderEmployees() {
 }
 
 function saveEmployee() {
-  const first=document.getElementById('f-first').value.trim(), last=document.getElementById('f-last').value.trim(), id=document.getElementById('f-empid').value.trim();
-  if(!first||!last||!id){showToast('⚠️ Name and Employee ID are required.');return;}
-  if(empList().find(e=>e.id===id)){showToast('⚠️ Employee ID already exists.');return;}
-  const emp={id,first,last,dept:document.getElementById('f-edept').value,email:document.getElementById('f-email').value.trim()};
-  if(empRef) empRef.push(emp); else { employees['local_'+Date.now()]=emp; renderEmployees(); }
-  ['f-first','f-last','f-empid','f-email'].forEach(i=>document.getElementById(i).value='');
-  closeModal('modal-add-emp'); showToast('✅ Employee added');
+  const first = document.getElementById('f-first').value.trim();
+  const last = document.getElementById('f-last').value.trim();
+  const id = document.getElementById('f-empid').value.trim();
+  if (!first || !last || !id) { showToast('⚠️ First name, Last name and Employee ID are required.'); return; }
+  if (empList().find(e => e.id === id)) { showToast('⚠️ Employee ID already exists. Use a unique ID.'); return; }
+  const emp = {
+    id: id,
+    first: first,
+    last: last,
+    dept: document.getElementById('f-edept').value,
+    email: document.getElementById('f-email').value.trim()
+  };
+  if (empRef) {
+    empRef.push(emp).then(() => {
+      showToast('✅ Employee added successfully');
+    }).catch(err => {
+      showToast('❌ Firebase error: ' + err.message);
+      console.error(err);
+    });
+  } else {
+    employees['local_' + Date.now()] = emp;
+    renderEmployees();
+    showToast('✅ Employee added (local)');
+  }
+  ['f-first','f-last','f-empid','f-email'].forEach(i => document.getElementById(i).value = '');
+  closeModal('modal-add-emp');
 }
 
 function deleteEmp(key) {
