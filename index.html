@@ -3,380 +3,602 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AssetTrack</title>
+<title>X-Corp Business Solutions — Asset Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;
-  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
-  --text:#e8eaf0;--muted:#7c8499;
-  --accent:#4f8ef7;--accent2:#7c5cfc;
-  --success:#22c55e;--warning:#f59e0b;--danger:#ef4444;
-  --radius:10px;--radius-lg:16px;
+  --navy:#0d1f3c;
+  --navy2:#162847;
+  --navy3:#1e3358;
+  --red:#c0392b;
+  --red2:#e74c3c;
+  --red-pale:#fdecea;
+  --gold:#f39c12;
+  --surface:#ffffff;
+  --surface2:#f4f6fb;
+  --surface3:#eaeff8;
+  --border:#dde3f0;
+  --text:#0d1f3c;
+  --muted:#64748b;
+  --radius:8px;
+  --radius-lg:12px;
+  --shadow:0 1px 3px rgba(13,31,60,.08),0 4px 16px rgba(13,31,60,.06);
+  --shadow-lg:0 8px 32px rgba(13,31,60,.12);
 }
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
-.layout{display:flex;min-height:100vh;}
-.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;}
-.logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-.logo-mark{display:flex;align-items:center;gap:10px;}
-.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;}
-.logo-text{font-size:14px;font-weight:600;letter-spacing:-0.3px;}
-.logo-sub{font-size:11px;color:var(--muted);margin-top:1px;font-family:'JetBrains Mono',monospace;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--muted);cursor:pointer;transition:color .15s,background .15s;border:none;background:none;width:100%;text-align:left;}
-.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.04);}
-.nav-item.active{color:var(--accent);background:rgba(79,142,247,0.1);font-weight:500;}
-.nav-icon{font-size:16px;width:18px;text-align:center;}
-.nav-section{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--muted);padding:16px 20px 6px;text-transform:uppercase;}
-.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);}
-.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:6px;vertical-align:middle;}
-.sync-dot.offline{background:var(--muted);}
-.sync-dot.syncing{background:var(--warning);animation:pulse 1s infinite;}
+body{font-family:'Inter',sans-serif;color:var(--text);background:var(--surface2);min-height:100vh;font-size:14px;line-height:1.5;}
+
+/* ── Top Header ── */
+.header{
+  background:var(--navy);
+  padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:60px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  position:sticky;top:0;z-index:100;
+}
+.header-logo{display:flex;align-items:center;gap:14px;}
+.logo-img{height:36px;object-fit:contain;}
+.logo-divider{width:1px;height:28px;background:rgba(255,255,255,.2);}
+.logo-text{color:#fff;font-size:13px;font-weight:500;letter-spacing:.01em;}
+.logo-sub{color:rgba(255,255,255,.5);font-size:10px;margin-top:1px;font-family:'JetBrains Mono',monospace;}
+
+.header-stats{display:flex;gap:28px;align-items:center;}
+.hstat{text-align:right;}
+.hstat-val{color:#fff;font-size:18px;font-weight:600;font-family:'JetBrains Mono',monospace;line-height:1;}
+.hstat-lbl{color:rgba(255,255,255,.45);font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+
+.header-right{display:flex;align-items:center;gap:12px;}
+.sync-pill{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:5px 12px;
+  font-size:11px;color:rgba(255,255,255,.7);
+}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#6b7280;}
+.sync-dot.live{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25);}
+.sync-dot.syncing{background:#f59e0b;animation:pulse 1s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sync-label{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
-.main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
-.topbar-title{font-size:15px;font-weight:600;flex:1;}
-.search-wrap{position:relative;flex:1;max-width:360px;}
-.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
-.search{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
-.search:focus{border-color:var(--accent);}
-.search::placeholder{color:var(--muted);}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:opacity .15s,transform .1s;border:none;}
-.btn:active{transform:scale(0.97);}
-.btn-primary{background:var(--accent);color:#fff;}
-.btn-primary:hover{opacity:.88;}
-.btn-ghost{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
-.btn-ghost:hover{border-color:var(--border2);}
-.btn-danger{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.2);}
-.content{padding:28px 32px;}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
-.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;}
-.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
-.stat-value{font-size:26px;font-weight:600;letter-spacing:-.5px;font-family:'JetBrains Mono',monospace;}
-.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
-.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
-.filter-select{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;outline:none;transition:border-color .15s;}
-.filter-select:focus{border-color:var(--accent);}
-.filter-label{font-size:12px;color:var(--muted);margin-left:4px;}
-.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
-.table-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
-.table-title{font-size:13px;font-weight:600;}
-.table-count{font-size:12px;color:var(--muted);}
-.table-actions{margin-left:auto;display:flex;gap:8px;}
-table{width:100%;border-collapse:collapse;}
-thead th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
-thead th:hover{color:var(--text);}
-thead th.sorted{color:var(--accent);}
-tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
-tbody tr:last-child{border-bottom:none;}
-tbody tr:hover{background:rgba(255,255,255,0.025);cursor:pointer;}
-td{padding:11px 14px;font-size:13px;vertical-align:middle;white-space:nowrap;}
-.asset-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
-.asset-name{font-weight:500;}
-.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:500;}
-.badge-active{background:rgba(34,197,94,.15);color:#4ade80;}
-.badge-inactive{background:rgba(239,68,68,.12);color:#f87171;}
-.badge-maintenance{background:rgba(245,158,11,.15);color:#fbbf24;}
-.badge-retired{background:rgba(124,132,153,.2);color:#9ca3af;}
-.condition-badge{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:500;}
-.cond-excellent{background:rgba(34,197,94,.12);color:#4ade80;}
-.cond-good{background:rgba(56,189,248,.12);color:#38bdf8;}
-.cond-fair{background:rgba(245,158,11,.12);color:#fbbf24;}
-.cond-poor{background:rgba(239,68,68,.12);color:#f87171;}
-.warranty-ok{color:var(--success);font-size:12px;}
-.warranty-soon{color:var(--warning);font-size:12px;}
-.warranty-expired{color:var(--danger);font-size:12px;}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;}
-.overlay.open{display:flex;}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);width:660px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:28px;}
-.modal-head{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
-.modal-title{font-size:16px;font-weight:600;flex:1;}
-.modal-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;display:flex;align-items:center;padding:4px;}
-.modal-close:hover{color:var(--text);}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.form-group{display:flex;flex-direction:column;gap:6px;}
-.form-group.full{grid-column:1/-1;}
-.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-.form-input,.form-select,.form-textarea{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;width:100%;}
-.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
-.form-textarea{resize:vertical;min-height:72px;}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;border-top:1px solid var(--border);padding-top:20px;}
-.detail-panel{position:fixed;top:0;right:0;bottom:0;width:400px;background:var(--bg2);border-left:1px solid var(--border);z-index:150;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:28px;}
-.detail-panel.open{transform:translateX(0);}
-.detail-head{display:flex;align-items:center;margin-bottom:24px;}
-.detail-title{font-size:15px;font-weight:600;flex:1;}
-.detail-row{display:flex;flex-direction:column;gap:3px;margin-bottom:16px;}
-.detail-key{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
-.detail-val{font-size:13px;}
-.detail-actions{display:flex;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:999;transform:translateY(60px);opacity:0;transition:all .2s;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+
+/* ── Nav Tabs ── */
+.nav{
+  background:var(--navy2);
+  padding:0 28px;
+  display:flex;gap:2px;
+  border-bottom:2px solid var(--navy3);
+  overflow-x:auto;
+}
+.nav-tab{
+  display:flex;align-items:center;gap:7px;
+  padding:12px 16px;
+  font-size:13px;color:rgba(255,255,255,.5);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  margin-bottom:-2px;
+  white-space:nowrap;
+  transition:color .15s;
+  border:none;background:none;font-family:inherit;
+}
+.nav-tab:hover{color:rgba(255,255,255,.85);}
+.nav-tab.active{color:#fff;border-bottom-color:var(--red2);font-weight:500;}
+.nav-tab i{font-size:15px;}
+
+/* ── Content ── */
+.content{padding:24px 28px;max-width:1400px;margin:0 auto;}
+
+/* ── Stats cards ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.metric{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:16px 18px;
+  box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:2px;
+}
+.metric-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.metric-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.metric-icon.blue{background:#eff6ff;color:#2563eb;}
+.metric-icon.green{background:#f0fdf4;color:#16a34a;}
+.metric-icon.amber{background:#fffbeb;color:#d97706;}
+.metric-icon.red{background:#fef2f2;color:#dc2626;}
+.metric-val{font-size:28px;font-weight:700;letter-spacing:-.5px;font-family:'JetBrains Mono',monospace;color:var(--navy);}
+.metric-lbl{font-size:12px;color:var(--muted);}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.toolbar input[type=text],.toolbar input[type=search]{
+  flex:1;min-width:180px;
+  padding:8px 12px;font-size:13px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);color:var(--text);font-family:inherit;
+  outline:none;transition:border-color .15s;
+}
+.toolbar input:focus{border-color:#4f8ef7;}
+.toolbar select{
+  padding:8px 10px;font-size:13px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);color:var(--text);font-family:inherit;
+  outline:none;cursor:pointer;
+}
+.toolbar select:focus{border-color:#4f8ef7;}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 14px;font-size:13px;font-weight:500;font-family:inherit;
+  border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--text);
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+}
+.btn:hover{background:var(--surface2);border-color:#bcc5d8;}
+.btn:active{transform:scale(.98);}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+.btn.primary:hover{background:var(--red2);border-color:var(--red2);}
+.btn.secondary{background:var(--navy);border-color:var(--navy);color:#fff;}
+.btn.secondary:hover{background:var(--navy2);}
+.btn i{font-size:15px;}
+
+/* ── Card / Table ── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.card-header{
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);
+}
+.card-title{font-size:13px;font-weight:600;color:var(--navy);}
+.card-count{font-size:12px;color:var(--muted);margin-left:auto;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{
+  text-align:left;padding:10px 14px;
+  color:var(--muted);font-weight:600;font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;
+  border-bottom:1px solid var(--border);
+  background:var(--surface2);
+  white-space:nowrap;
+}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#f8faff;cursor:pointer;}
+.empty{padding:48px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;gap:4px;}
+.badge-green{background:#dcfce7;color:#166534;}
+.badge-amber{background:#fef9c3;color:#854d0e;}
+.badge-red{background:#fde8e8;color:#991b1b;}
+.badge-gray{background:#f1f5f9;color:#475569;}
+.badge-blue{background:#dbeafe;color:#1e40af;}
+.badge-navy{background:#e8ecf4;color:var(--navy);}
+
+/* ── Action buttons ── */
+.action-btn{
+  padding:4px 9px;font-size:11px;border-radius:5px;
+  border:1px solid var(--border);background:transparent;color:var(--muted);
+  cursor:pointer;font-family:inherit;transition:all .12s;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.action-btn:hover{background:var(--surface2);color:var(--text);}
+.action-btn.danger:hover{background:#fde8e8;color:#991b1b;border-color:#fca5a5;}
+.action-btn.success:hover{background:#dcfce7;color:#166534;border-color:#86efac;}
+
+/* ── Mono ── */
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;}
+.sn-chip{
+  display:inline-block;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  background:var(--surface2);padding:2px 7px;
+  border-radius:4px;border:1px solid var(--border);
+  color:var(--navy);letter-spacing:.3px;
+}
+
+/* ── Employee cards ── */
+.emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:20px;}
+.emp-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:16px;cursor:pointer;box-shadow:var(--shadow);
+  transition:border-color .15s,box-shadow .15s;
+}
+.emp-card:hover{border-color:#4f8ef7;box-shadow:var(--shadow-lg);}
+.emp-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,var(--navy),var(--red));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;margin-bottom:10px;
+}
+.emp-name{font-size:13px;font-weight:600;color:var(--navy);}
+.emp-dept{font-size:11px;color:var(--muted);margin-top:2px;}
+.emp-count{font-size:11px;color:var(--red);margin-top:6px;font-weight:500;}
+
+/* ── Issue/Return layout ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.section-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.issue-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);}
+
+/* ── History ── */
+.hist-event{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+
+/* ── Serial summary ── */
+.sn-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+.sn-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);}
+.sn-val{font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--navy);}
+.sn-lbl{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* ── Modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(13,31,60,.45);
+  display:none;align-items:center;justify-content:center;z-index:200;
+  backdrop-filter:blur(2px);
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border-radius:var(--radius-lg);
+  border:1px solid var(--border);width:500px;max-width:95vw;
+  max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);
+}
+.modal-head{
+  padding:18px 22px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--surface);z-index:1;
+}
+.modal-head h3{font-size:15px;font-weight:600;color:var(--navy);}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:12px;font-weight:500;color:var(--muted);}
+.field input,.field select,.field textarea{
+  padding:8px 10px;font-size:13px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface2);color:var(--text);font-family:inherit;
+  outline:none;transition:border-color .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#4f8ef7;background:#fff;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ── Firebase config screen ── */
+.config-screen{max-width:580px;margin:0 auto;padding:32px 0;}
+.config-badge{display:inline-flex;align-items:center;gap:7px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:5px 14px;font-size:12px;color:#c2410c;margin-bottom:20px;}
+.config-title{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:8px;letter-spacing:-.3px;}
+.config-sub{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:28px;}
+.config-fields{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;box-shadow:var(--shadow);}
+.config-fields .field{margin-bottom:14px;}
+.config-fields .field:last-of-type{margin-bottom:0;}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--navy);color:#fff;
+  border-radius:10px;padding:12px 18px;
+  font-size:13px;display:flex;align-items:center;gap:10px;
+  z-index:999;transform:translateY(60px);opacity:0;
+  transition:all .2s;box-shadow:var(--shadow-lg);min-width:240px;
+}
 .toast.show{transform:translateY(0);opacity:1;}
 
-/* Setup screen */
-.setup-screen{max-width:620px;margin:0 auto;padding:48px 32px;}
-.setup-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--accent);margin-bottom:24px;}
-.setup-title{font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:10px;}
-.setup-sub{color:var(--muted);font-size:14px;line-height:1.8;margin-bottom:36px;}
-.steps{display:flex;flex-direction:column;gap:0;}
-.step{display:flex;gap:0;position:relative;}
-.step:not(:last-child)::before{content:'';position:absolute;left:15px;top:36px;bottom:0;width:1px;background:var(--border);}
-.step-num{width:32px;height:32px;border-radius:50%;background:rgba(79,142,247,.15);border:1px solid rgba(79,142,247,.25);color:var(--accent);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:16px;margin-top:2px;}
-.step-body{flex:1;padding-bottom:28px;}
-.step-label{font-size:13px;font-weight:500;margin-bottom:4px;}
-.step-desc{font-size:12px;color:var(--muted);line-height:1.7;}
-.step-desc code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--accent);}
-.config-fields{display:flex;flex-direction:column;gap:12px;margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
-.config-field-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
-.config-connect-btn{margin-top:20px;width:100%;padding:11px;font-size:14px;justify-content:center;}
+/* ── Print ── */
+@media print{
+  .header,.nav,.toolbar,.action-btn,.btn{display:none!important;}
+  .card{box-shadow:none;border:1px solid #ccc;}
+  body{background:#fff;}
+}
 
-/* Dashboard */
-.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;}
-.dash-card-title{font-size:13px;font-weight:600;margin-bottom:16px;}
-.bar-row{margin-bottom:10px;}
-.bar-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;}
-.bar-track{height:6px;background:var(--bg3);border-radius:3px;}
-.bar-fill{height:100%;border-radius:3px;transition:width .5s;}
-
-.spinner{width:28px;height:28px;margin:48px auto 12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.empty-state{text-align:center;padding:64px 24px;}
-.empty-title{font-size:15px;font-weight:500;margin-bottom:6px;}
-.empty-sub{font-size:13px;color:var(--muted);}
 .hidden{display:none!important;}
-.text-muted{color:var(--muted);}
-.mono{font-family:'JetBrains Mono',monospace;font-size:12px;}
-@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}.sidebar{display:none}.main{margin-left:0}.detail-panel{width:100%}.dash-grid{grid-template-columns:1fr}}
-@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.content{padding:16px}.form-grid{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .metric-grid{grid-template-columns:repeat(2,1fr);}
+  .two-col{grid-template-columns:1fr;}
+  .header-stats{display:none;}
+}
+@media(max-width:600px){
+  .metric-grid{grid-template-columns:1fr;}
+  .content{padding:16px;}
+  .field-row{grid-template-columns:1fr;}
+  .emp-grid{grid-template-columns:repeat(2,1fr);}
+}
 </style>
 </head>
 <body>
 
-<div class="layout">
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-mark">
-        <div class="logo-icon">📋</div>
-        <div>
-          <div class="logo-text">AssetTrack</div>
-          <div class="logo-sub">IT Register</div>
-        </div>
-      </div>
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-logo">
+    <img class="logo-img" src="https://lirp.cdn-website.com/c706051a/dms3rep/multi/opt/cropped-Xcorp-new-logo-1920w.png" alt="X-Corp Logo" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'">
+    <div id="logo-fallback" style="display:none;width:36px;height:36px;border-radius:7px;background:var(--red);align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">X</div>
+    <div class="logo-divider"></div>
+    <div>
+      <div class="logo-text">X-Corp Business Solutions</div>
+      <div class="logo-sub">Asset Management System</div>
     </div>
-    <div class="nav-section">Menu</div>
-    <button class="nav-item active" onclick="showView('register')"><span class="nav-icon">📊</span> Asset Register</button>
-    <button class="nav-item" onclick="showView('dashboard')"><span class="nav-icon">📈</span> Dashboard</button>
-    <button class="nav-item" onclick="showView('setup')"><span class="nav-icon">⚙️</span> Settings</button>
-    <div class="sidebar-footer">
-      <span class="sync-dot offline" id="sync-dot"></span>
-      <span class="sync-label" id="sync-label">Not connected</span>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-val" id="h-total">0</div><div class="hstat-lbl">Total</div></div>
+    <div class="hstat"><div class="hstat-val" id="h-issued">0</div><div class="hstat-lbl">Issued</div></div>
+    <div class="hstat"><div class="hstat-val" id="h-available">0</div><div class="hstat-lbl">Available</div></div>
+  </div>
+  <div class="header-right">
+    <div class="sync-pill">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span id="sync-label">Not connected</span>
     </div>
-  </aside>
-
-  <div class="main">
-    <div class="topbar">
-      <div class="topbar-title" id="view-title">Asset Register</div>
-      <div class="search-wrap">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input class="search" id="search" placeholder="Search assets…" oninput="renderTable()">
-      </div>
-      <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export</button>
-      <button class="btn btn-primary" onclick="openAddModal()">+ Add Asset</button>
-    </div>
-
-    <div class="content">
-
-      <!-- Register -->
-      <div id="view-register">
-        <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-value" id="s-total">—</div></div>
-          <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--success)" id="s-active">—</div></div>
-          <div class="stat-card"><div class="stat-label">Maintenance</div><div class="stat-value" style="color:var(--warning)" id="s-maint">—</div></div>
-          <div class="stat-card"><div class="stat-label">Warranty Alert</div><div class="stat-value" style="color:var(--danger)" id="s-warranty">—</div><div class="stat-sub">expiring ≤ 90 days</div></div>
-        </div>
-        <div class="filter-bar">
-          <span class="filter-label">Filter:</span>
-          <select class="filter-select" id="f-status" onchange="renderTable()">
-            <option value="">All Statuses</option>
-            <option>Active</option><option>Inactive</option><option>Maintenance</option><option>Retired</option>
-          </select>
-          <select class="filter-select" id="f-dept" onchange="renderTable()"><option value="">All Departments</option></select>
-          <select class="filter-select" id="f-cond" onchange="renderTable()">
-            <option value="">All Conditions</option>
-            <option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option>
-          </select>
-        </div>
-        <div class="table-wrap">
-          <div class="table-header">
-            <span class="table-title">Assets</span>
-            <span class="table-count" id="tbl-count"></span>
-          </div>
-          <div id="table-container">
-            <div class="empty-state">
-              <div style="font-size:36px;margin-bottom:12px;opacity:.3">📋</div>
-              <div class="empty-title">No assets yet</div>
-              <div class="empty-sub">Connect Firebase in Settings, then add your first asset.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dashboard -->
-      <div id="view-dashboard" class="hidden">
-        <div style="margin-bottom:24px"><div style="font-size:18px;font-weight:600;margin-bottom:4px">Dashboard</div><div style="color:var(--muted);font-size:13px">Fleet overview</div></div>
-        <div id="dashboard-content" class="dash-grid"></div>
-      </div>
-
-      <!-- Setup -->
-      <div id="view-setup" class="hidden">
-        <div class="setup-screen">
-          <div class="setup-badge">🔥 Firebase Setup</div>
-          <div class="setup-title">Connect your database</div>
-          <div class="setup-sub">Firebase is Google's free real-time database. All your team members will see live updates the moment anyone makes a change. Follow these steps — it takes about 5 minutes.</div>
-
-          <div class="steps">
-            <div class="step">
-              <div class="step-num">1</div>
-              <div class="step-body">
-                <div class="step-label">Create a Firebase project</div>
-                <div class="step-desc">Go to <code>console.firebase.google.com</code> → Add project → give it a name (e.g. "AssetTrack") → Continue. Disable Google Analytics if you don't need it → Create project.</div>
-              </div>
-            </div>
-            <div class="step">
-              <div class="step-num">2</div>
-              <div class="step-body">
-                <div class="step-label">Create a Realtime Database</div>
-                <div class="step-desc">In the left sidebar → Build → Realtime Database → Create Database → choose your region → Start in <b>test mode</b> (allows read/write for 30 days — you can secure it later) → Enable.</div>
-              </div>
-            </div>
-            <div class="step">
-              <div class="step-num">3</div>
-              <div class="step-body">
-                <div class="step-label">Get your config keys</div>
-                <div class="step-desc">Project Settings (gear icon) → General → Your apps → click Web icon (<code>&lt;/&gt;</code>) → Register app → copy the <code>firebaseConfig</code> values below.</div>
-              </div>
-            </div>
-            <div class="step">
-              <div class="step-num">4</div>
-              <div class="step-body">
-                <div class="step-label">Paste your config and connect</div>
-                <div class="step-desc">Fill in the fields below, click Connect, and your database is live.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="config-fields">
-            <div>
-              <div class="config-field-label">API Key</div>
-              <input class="form-input" id="cfg-apiKey" placeholder="AIzaSy…">
-            </div>
-            <div>
-              <div class="config-field-label">Auth Domain</div>
-              <input class="form-input" id="cfg-authDomain" placeholder="your-project.firebaseapp.com">
-            </div>
-            <div>
-              <div class="config-field-label">Database URL</div>
-              <input class="form-input" id="cfg-dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
-            </div>
-            <div>
-              <div class="config-field-label">Project ID</div>
-              <input class="form-input" id="cfg-projectId" placeholder="your-project-id">
-            </div>
-            <button class="btn btn-primary config-connect-btn" onclick="saveAndConnect()">🔥 Connect to Firebase</button>
-            <div id="cfg-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px"></div>
-          </div>
-        </div>
-      </div>
-
-    </div>
+    <button class="btn secondary" onclick="window.print()" style="padding:6px 12px;font-size:12px"><i class="ti ti-printer"></i> Print</button>
   </div>
 </div>
 
-<!-- Detail Panel -->
-<div class="detail-panel" id="detail-panel">
-  <div class="detail-head">
-    <div class="detail-title" id="dp-name">—</div>
-    <button class="modal-close" onclick="closeDetail()">✕</button>
-  </div>
-  <div id="dp-body"></div>
-  <div class="detail-actions">
-    <button class="btn btn-ghost" onclick="editFromDetail()">✏️ Edit</button>
-    <button class="btn btn-danger" onclick="deleteFromDetail()">🗑 Delete</button>
-  </div>
+<!-- ── Nav ── -->
+<div class="nav">
+  <button class="nav-tab active" id="tab-assets" onclick="switchTab('assets')"><i class="ti ti-device-laptop"></i> Assets</button>
+  <button class="nav-tab" id="tab-serials" onclick="switchTab('serials')"><i class="ti ti-barcode"></i> Serial Numbers</button>
+  <button class="nav-tab" id="tab-employees" onclick="switchTab('employees')"><i class="ti ti-users"></i> Employees</button>
+  <button class="nav-tab" id="tab-issue" onclick="switchTab('issue')"><i class="ti ti-arrows-exchange"></i> Issue / Return</button>
+  <button class="nav-tab" id="tab-history" onclick="switchTab('history')"><i class="ti ti-history"></i> History</button>
+  <button class="nav-tab" id="tab-config" onclick="switchTab('config')"><i class="ti ti-settings"></i> Firebase Setup</button>
 </div>
 
-<!-- Add/Edit Modal -->
-<div class="overlay" id="modal-overlay">
+<!-- ── Content ── -->
+<div class="content">
+
+  <!-- ASSETS -->
+  <div id="view-assets">
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-top"><div class="metric-icon blue"><i class="ti ti-device-laptop"></i></div></div><div class="metric-val" id="m-total">0</div><div class="metric-lbl">Total Assets</div></div>
+      <div class="metric"><div class="metric-top"><div class="metric-icon green"><i class="ti ti-check"></i></div></div><div class="metric-val" id="m-avail">0</div><div class="metric-lbl">Available</div></div>
+      <div class="metric"><div class="metric-top"><div class="metric-icon amber"><i class="ti ti-user-check"></i></div></div><div class="metric-val" id="m-issued">0</div><div class="metric-lbl">Issued</div></div>
+      <div class="metric"><div class="metric-top"><div class="metric-icon red"><i class="ti ti-tool"></i></div></div><div class="metric-val" id="m-maint">0</div><div class="metric-lbl">Maintenance</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="asset-search" placeholder="🔍  Search by ID, name or serial…" oninput="renderAssets()">
+      <select id="asset-cat" onchange="renderAssets()">
+        <option value="">All categories</option>
+        <option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option>
+      </select>
+      <select id="asset-status" onchange="renderAssets()">
+        <option value="">All statuses</option>
+        <option>Available</option><option>Issued</option><option>Maintenance</option><option>Retired</option>
+      </select>
+      <button class="btn" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
+      <button class="btn primary" onclick="openModal('add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Asset Register</span>
+        <span class="card-count" id="asset-count"></span>
+      </div>
+      <div id="asset-table-wrap">
+        <div class="empty">Connect Firebase in the Setup tab to load assets, or add assets manually.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERIALS -->
+  <div id="view-serials" class="hidden">
+    <div class="sn-summary">
+      <div class="sn-stat"><div style="color:var(--navy);font-size:20px;margin-bottom:8px"><i class="ti ti-barcode"></i></div><div class="sn-val" id="sn-count">0</div><div class="sn-lbl">Serials on record</div></div>
+      <div class="sn-stat"><div style="color:#16a34a;font-size:20px;margin-bottom:8px"><i class="ti ti-circle-check"></i></div><div class="sn-val" id="sn-with">0</div><div class="sn-lbl">Assets with serial</div></div>
+      <div class="sn-stat"><div style="color:#dc2626;font-size:20px;margin-bottom:8px"><i class="ti ti-alert-circle"></i></div><div class="sn-val" id="sn-without">0</div><div class="sn-lbl">Missing serial</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="sn-search" placeholder="🔍  Search serial, asset ID or name…" oninput="renderSerials()">
+      <select id="sn-cat" onchange="renderSerials()">
+        <option value="">All categories</option>
+        <option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option>
+      </select>
+      <select id="sn-has" onchange="renderSerials()">
+        <option value="">All assets</option>
+        <option value="yes">Has serial</option>
+        <option value="no">Missing serial</option>
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Asset ID</th><th>Description</th><th>Category</th><th>Serial Number</th><th>Status</th><th>Assigned To</th><th></th></tr></thead>
+        <tbody id="sn-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EMPLOYEES -->
+  <div id="view-employees" class="hidden">
+    <div class="toolbar">
+      <input type="text" id="emp-search" placeholder="🔍  Search employees…" oninput="renderEmployees()">
+      <select id="emp-dept" onchange="renderEmployees()">
+        <option value="">All departments</option>
+        <option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option>
+      </select>
+      <button class="btn primary" onclick="openModal('add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
+    </div>
+    <div class="emp-grid" id="emp-grid"></div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Employee</th><th>Department</th><th>Email</th><th>Assets Held</th><th></th></tr></thead>
+        <tbody id="emp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ISSUE / RETURN -->
+  <div id="view-issue" class="hidden">
+    <div class="two-col">
+      <div>
+        <div class="section-label"><i class="ti ti-arrow-right" style="color:var(--red)"></i> Issue Asset to Employee</div>
+        <div class="issue-card">
+          <div class="field"><label>Select Employee</label><select id="issue-emp"><option value="">— choose employee —</option></select></div>
+          <div class="field"><label>Select Asset (available only)</label><select id="issue-asset"><option value="">— choose asset —</option></select></div>
+          <div class="field"><label>Notes</label><input type="text" id="issue-notes" placeholder="Optional notes…"></div>
+          <button class="btn primary" style="align-self:flex-start" onclick="issueAsset()"><i class="ti ti-arrow-right"></i> Issue Asset</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-label"><i class="ti ti-arrow-left" style="color:#16a34a"></i> Return Asset</div>
+        <div class="issue-card">
+          <div class="field"><label>Select Issued Asset to Return</label><select id="return-asset"><option value="">— choose asset —</option></select></div>
+          <div class="field"><label>Condition on Return</label>
+            <select id="return-cond"><option>Good</option><option>Damaged</option><option>Requires maintenance</option></select>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" id="return-notes" placeholder="Optional notes…"></div>
+          <button class="btn secondary" style="align-self:flex-start" onclick="returnAsset()"><i class="ti ti-arrow-left"></i> Return Asset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="view-history" class="hidden">
+    <div class="toolbar">
+      <input type="text" id="hist-search" placeholder="🔍  Search history…" oninput="renderHistory()">
+      <select id="hist-filter" onchange="renderHistory()">
+        <option value="">All events</option>
+        <option value="issued">Issued</option><option value="returned">Returned</option><option value="added">Added</option>
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Date &amp; Time</th><th>Event</th><th>Asset</th><th>Employee</th><th>Notes</th></tr></thead>
+        <tbody id="hist-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FIREBASE CONFIG -->
+  <div id="view-config" class="hidden">
+    <div class="config-screen">
+      <div class="config-badge">🔥 Firebase Setup</div>
+      <div class="config-title">Connect your live database</div>
+      <div class="config-sub">All data — assets, employees and history — is stored in Firebase and syncs live across every device and team member. Enter your Firebase config below once and it's saved permanently in this file.</div>
+      <div class="config-fields">
+        <div class="field"><label>API Key</label><input type="text" id="cfg-apiKey" placeholder="AIzaSy…"></div>
+        <div class="field"><label>Auth Domain</label><input type="text" id="cfg-authDomain" placeholder="yourproject.firebaseapp.com"></div>
+        <div class="field"><label>Database URL</label><input type="text" id="cfg-dbUrl" placeholder="https://yourproject-default-rtdb.firebaseio.com"></div>
+        <div class="field"><label>Project ID</label><input type="text" id="cfg-projectId" placeholder="yourproject-id"></div>
+        <div style="margin-top:18px;display:flex;gap:10px;align-items:center">
+          <button class="btn primary" style="flex:1;justify-content:center;padding:10px" onclick="saveAndConnect()"><i class="ti ti-plug"></i> Connect to Firebase</button>
+        </div>
+        <div id="cfg-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- MODAL: Add Asset -->
+<div class="modal-overlay" id="modal-add-asset" onclick="overlayClose(event,'modal-add-asset')">
   <div class="modal">
-    <div class="modal-head">
-      <div class="modal-title" id="modal-title">Add Asset</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-head"><h3>Add New Asset</h3><button class="action-btn" onclick="closeModal('modal-add-asset')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Asset ID *</label><input type="text" id="f-id" placeholder="e.g. XC-LT-001"></div>
+        <div class="field"><label>Category</label>
+          <select id="f-cat"><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Description *</label><input type="text" id="f-desc" placeholder="e.g. Dell Latitude 5540"></div>
+      <div class="field-row">
+        <div class="field"><label>Brand</label><input type="text" id="f-brand" placeholder="e.g. Dell"></div>
+        <div class="field"><label>Serial Number</label><input type="text" id="f-serial" placeholder="SN-…"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Purchase Date</label><input type="date" id="f-pdate"></div>
+        <div class="field"><label>Value (R)</label><input type="number" id="f-value" placeholder="0.00"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Warranty Expiry</label><input type="date" id="f-warranty"></div>
+        <div class="field"><label>Status</label>
+          <select id="f-status"><option>Available</option><option>Maintenance</option><option>Retired</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="f-notes" placeholder="Optional notes…"></div>
     </div>
-    <div class="form-grid">
-      <div class="form-group"><label class="form-label">Asset ID</label><input class="form-input" id="f-id" placeholder="e.g. IT-001"></div>
-      <div class="form-group"><label class="form-label">Asset Name</label><input class="form-input" id="f-name" placeholder="e.g. MacBook Pro 14"></div>
-      <div class="form-group"><label class="form-label">Category</label>
-        <select class="form-select" id="f-cat">
-          <option>Laptop</option><option>Desktop</option><option>Monitor</option><option>Phone</option><option>Tablet</option><option>Printer</option><option>Network Equipment</option><option>Server</option><option>Other</option>
-        </select>
-      </div>
-      <div class="form-group"><label class="form-label">Brand</label><input class="form-input" id="f-brand" placeholder="e.g. Apple"></div>
-      <div class="form-group"><label class="form-label">Model</label><input class="form-input" id="f-model" placeholder="e.g. A2442"></div>
-      <div class="form-group"><label class="form-label">Serial Number</label><input class="form-input" id="f-serial" placeholder="e.g. C02XA1234"></div>
-      <div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="f-assigned" placeholder="Full name"></div>
-      <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="f-dept" placeholder="e.g. Finance"></div>
-      <div class="form-group"><label class="form-label">Purchase Date</label><input class="form-input" id="f-purchase" type="date"></div>
-      <div class="form-group"><label class="form-label">Warranty Expiry</label><input class="form-input" id="f-warranty" type="date"></div>
-      <div class="form-group"><label class="form-label">Condition</label>
-        <select class="form-select" id="f-cond2"><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select>
-      </div>
-      <div class="form-group"><label class="form-label">Status</label>
-        <select class="form-select" id="f-status2"><option>Active</option><option>Inactive</option><option>Maintenance</option><option>Retired</option></select>
-      </div>
-      <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f-notes" placeholder="Any additional notes…"></textarea></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-add-asset')">Cancel</button>
+      <button class="btn primary" onclick="saveAsset()"><i class="ti ti-check"></i> Save Asset</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+  </div>
+</div>
+
+<!-- MODAL: Edit Serial -->
+<div class="modal-overlay" id="modal-edit-serial" onclick="overlayClose(event,'modal-edit-serial')">
+  <div class="modal">
+    <div class="modal-head"><h3>Edit Serial Number</h3><button class="action-btn" onclick="closeModal('modal-edit-serial')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:12px;font-size:13px;border:1px solid var(--border)">
+        <div style="color:var(--muted);font-size:11px;margin-bottom:3px;font-weight:500">ASSET</div>
+        <div id="edit-sn-label" style="font-weight:600;color:var(--navy)"></div>
+      </div>
+      <div class="field"><label>Serial Number</label><input type="text" id="edit-sn-val" placeholder="Enter serial number…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-edit-serial')">Cancel</button>
+      <button class="btn primary" onclick="saveSerial()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Employee -->
+<div class="modal-overlay" id="modal-add-emp" onclick="overlayClose(event,'modal-add-emp')">
+  <div class="modal">
+    <div class="modal-head"><h3>Add Employee</h3><button class="action-btn" onclick="closeModal('modal-add-emp')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>First Name *</label><input type="text" id="f-first" placeholder="First name"></div>
+        <div class="field"><label>Last Name *</label><input type="text" id="f-last" placeholder="Last name"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Employee ID *</label><input type="text" id="f-empid" placeholder="e.g. EMP-005"></div>
+        <div class="field"><label>Department</label>
+          <select id="f-edept"><option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" id="f-email" placeholder="name@x-corp.co.za"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-add-emp')">Cancel</button>
+      <button class="btn primary" onclick="saveEmployee()"><i class="ti ti-check"></i> Save Employee</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"><span id="toast-msg"></span></div>
 
-<!-- Firebase SDK -->
+<!-- Firebase -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
 
 <script>
 // ── State ──
 let assets = {};
-let db = null;
-let assetsRef = null;
-let firebaseConfig = JSON.parse(localStorage.getItem('fbConfig') || 'null');
-let sortCol = 0, sortDir = 1;
-let editKey = null;
-let detailKey = null;
+let employees = {};
+let historyLog = {};
+let db = null, assetsRef = null, empRef = null, histRef = null;
+let editingSerialId = null;
+let fbConfig = {"apiKey":"AIzaSyBWsY76acx3wsMFFiy22OhVLp2WyCqCt44","authDomain":"asset-register-f824c.firebaseapp.com","databaseURL":"https://asset-register-f824c-default-rtdb.firebaseio.com","projectId":"asset-register-f824c"};
+
+const today = () => new Date().toISOString().slice(0,10);
+const now = () => { const d=new Date(); return d.toLocaleDateString('en-ZA')+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}); };
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
-  if (firebaseConfig) {
-    fillConfigForm();
-    initFirebase(firebaseConfig);
-  } else {
-    setSyncStatus('offline', 'Not connected');
-    showView('setup');
-  }
+  fillCfgForm(); initFirebase(fbConfig);
+  else { setSyncStatus('offline','Not connected'); }
+  renderAssets(); updateStats();
 });
 
-function fillConfigForm() {
-  if (!firebaseConfig) return;
-  document.getElementById('cfg-apiKey').value = firebaseConfig.apiKey || '';
-  document.getElementById('cfg-authDomain').value = firebaseConfig.authDomain || '';
-  document.getElementById('cfg-dbUrl').value = firebaseConfig.databaseURL || '';
-  document.getElementById('cfg-projectId').value = firebaseConfig.projectId || '';
+function fillCfgForm() {
+  if (!fbConfig) return;
+  document.getElementById('cfg-apiKey').value = fbConfig.apiKey || '';
+  document.getElementById('cfg-authDomain').value = fbConfig.authDomain || '';
+  document.getElementById('cfg-dbUrl').value = fbConfig.databaseURL || '';
+  document.getElementById('cfg-projectId').value = fbConfig.projectId || '';
 }
 
 // ── Firebase ──
@@ -387,301 +609,320 @@ function saveAndConnect() {
     databaseURL: document.getElementById('cfg-dbUrl').value.trim(),
     projectId: document.getElementById('cfg-projectId').value.trim(),
   };
-  if (!cfg.apiKey || !cfg.databaseURL) {
-    document.getElementById('cfg-status').textContent = '⚠️ API Key and Database URL are required.';
-    return;
-  }
+  if (!cfg.apiKey || !cfg.databaseURL) { document.getElementById('cfg-status').textContent = '⚠️ API Key and Database URL are required.'; return; }
   document.getElementById('cfg-status').textContent = 'Connecting…';
-  localStorage.setItem('fbConfig', JSON.stringify(cfg));
-  firebaseConfig = cfg;
+  localStorage.setItem('xcorp_fb', JSON.stringify(cfg));
+  fbConfig = cfg;
   initFirebase(cfg);
 }
 
 function initFirebase(cfg) {
   try {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(cfg);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
     db = firebase.database();
     assetsRef = db.ref('assets');
-    setSyncStatus('syncing', 'Connecting…');
-    assetsRef.on('value', snap => {
-      assets = snap.val() || {};
-      setSyncStatus('online', 'Live');
-      renderAll();
-      document.getElementById('cfg-status').textContent = '✅ Connected!';
-    }, err => {
-      setSyncStatus('offline', 'Error');
-      showToast('❌ Firebase error: ' + err.message);
-      document.getElementById('cfg-status').textContent = '❌ ' + err.message;
-    });
+    empRef = db.ref('employees');
+    histRef = db.ref('history');
+    setSyncStatus('syncing','Connecting…');
+    assetsRef.on('value', snap => { assets = snap.val()||{}; updateStats(); renderAssets(); renderSerials(); });
+    empRef.on('value', snap => { employees = snap.val()||{}; renderEmployees(); });
+    histRef.on('value', snap => { historyLog = snap.val()||{}; renderHistory(); });
+    setSyncStatus('live','Live sync');
+    document.getElementById('cfg-status').textContent = '✅ Connected!';
   } catch(e) {
-    setSyncStatus('offline', 'Config error');
-    showToast('❌ ' + e.message);
+    setSyncStatus('offline','Error');
+    showToast('❌ Firebase error: ' + e.message);
     document.getElementById('cfg-status').textContent = '❌ ' + e.message;
   }
 }
 
 function setSyncStatus(state, label) {
   const dot = document.getElementById('sync-dot');
-  dot.className = 'sync-dot' + (state !== 'online' ? ' ' + state : '');
+  dot.className = 'sync-dot' + (state==='live'?' live':state==='syncing'?' syncing':'');
   document.getElementById('sync-label').textContent = label;
 }
 
-// ── Views ──
-function showView(view) {
-  ['register','dashboard','setup'].forEach(v => {
-    document.getElementById('view-'+v).classList.toggle('hidden', v !== view);
+// ── Tab switching ──
+function switchTab(tab) {
+  const tabs = ['assets','serials','employees','issue','history','config'];
+  tabs.forEach(t => {
+    document.getElementById('view-'+t).classList.toggle('hidden', t!==tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
-  document.querySelectorAll('.nav-item').forEach((el,i) => {
-    el.classList.toggle('active', ['register','dashboard','setup'][i] === view);
-  });
-  const titles = {register:'Asset Register', dashboard:'Dashboard', setup:'Settings'};
-  document.getElementById('view-title').textContent = titles[view];
-  if (view === 'dashboard') renderDashboard();
-  if (view === 'setup') fillConfigForm();
-}
-
-// ── Render ──
-function renderAll() {
-  renderStats();
-  renderTable();
-  renderDeptFilter();
-}
-
-function assetList() {
-  return Object.entries(assets).map(([k,v]) => ({...v, _key: k}));
-}
-
-function renderStats() {
-  const list = assetList();
-  document.getElementById('s-total').textContent = list.length;
-  document.getElementById('s-active').textContent = list.filter(a=>a.status==='Active').length;
-  document.getElementById('s-maint').textContent = list.filter(a=>a.status==='Maintenance').length;
-  document.getElementById('s-warranty').textContent = list.filter(a=>warrantyClass(a.warranty)!=='ok').length;
-}
-
-function renderDeptFilter() {
-  const depts = [...new Set(assetList().map(a=>a.dept).filter(Boolean))].sort();
-  const sel = document.getElementById('f-dept');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">All Departments</option>' + depts.map(d=>`<option${d===cur?' selected':''}>${esc(d)}</option>`).join('');
-}
-
-function renderTable() {
-  const q = document.getElementById('search').value.toLowerCase();
-  const fS = document.getElementById('f-status').value;
-  const fD = document.getElementById('f-dept').value;
-  const fC = document.getElementById('f-cond').value;
-
-  let data = assetList().filter(a => {
-    const txt = Object.values(a).join(' ').toLowerCase();
-    return (!q||txt.includes(q)) && (!fS||a.status===fS) && (!fD||a.dept===fD) && (!fC||a.cond===fC);
-  });
-
-  const keys = ['id','name','cat','brand','assigned','dept','warranty','cond','status'];
-  data.sort((a,b)=>(a[keys[sortCol]]||'').localeCompare(b[keys[sortCol]]||'')*sortDir);
-
-  document.getElementById('tbl-count').textContent = data.length + ' of ' + assetList().length;
-
-  const cols = ['Asset ID','Name','Category','Brand / Model','Assigned To','Department','Warranty','Condition','Status'];
-  const arr = i => sortCol===i?(sortDir===1?' ▲':' ▼'):'';
-
-  if (!data.length) {
-    document.getElementById('table-container').innerHTML = `<div class="empty-state"><div style="font-size:32px;margin-bottom:10px;opacity:.3">🔍</div><div class="empty-title">No assets match</div><div class="empty-sub">Try adjusting your search or filters.</div></div>`;
-    return;
-  }
-
-  let html = `<table><thead><tr>${cols.map((c,i)=>`<th class="${sortCol===i?'sorted':''}" onclick="sortBy(${i})">${c}${arr(i)}</th>`).join('')}</tr></thead><tbody>`;
-  data.forEach(a => {
-    const wc = warrantyClass(a.warranty);
-    html += `<tr onclick="openDetail('${a._key}')">
-      <td><span class="asset-id">${esc(a.id)}</span></td>
-      <td><span class="asset-name">${esc(a.name)}</span></td>
-      <td><span class="text-muted">${esc(a.cat)}</span></td>
-      <td>${esc(a.brand)}${a.model?` <span class="text-muted mono">${esc(a.model)}</span>`:''}</td>
-      <td>${esc(a.assigned)||'<span class="text-muted">—</span>'}</td>
-      <td>${esc(a.dept)||'<span class="text-muted">—</span>'}</td>
-      <td><span class="warranty-${wc}">${a.warranty?formatDate(a.warranty):'—'}</span></td>
-      <td>${condBadge(a.cond)}</td>
-      <td>${statusBadge(a.status)}</td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('table-container').innerHTML = html;
-}
-
-function sortBy(col) { if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;} renderTable(); }
-
-// ── Detail Panel ──
-function openDetail(key) {
-  detailKey = key;
-  const a = assets[key];
-  if (!a) return;
-  document.getElementById('dp-name').textContent = a.name;
-  const wc = warrantyClass(a.warranty);
-  document.getElementById('dp-body').innerHTML = [
-    ['Asset ID', `<span class="mono">${esc(a.id)}</span>`],
-    ['Status', statusBadge(a.status)],
-    ['Condition', condBadge(a.cond)],
-    ['Category', esc(a.cat)],
-    ['Brand', esc(a.brand)],
-    ['Model', `<span class="mono">${esc(a.model)}</span>`],
-    ['Serial Number', `<span class="mono">${esc(a.serial)}</span>`],
-    ['Assigned To', esc(a.assigned)||'—'],
-    ['Department', esc(a.dept)||'—'],
-    ['Purchase Date', formatDate(a.purchase)],
-    ['Warranty Expiry', `<span class="warranty-${wc}">${formatDate(a.warranty)}</span>`],
-    ['Notes', esc(a.notes)||'—'],
-  ].map(([k,v])=>`<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${v}</div></div>`).join('');
-  document.getElementById('detail-panel').classList.add('open');
-}
-function closeDetail() { document.getElementById('detail-panel').classList.remove('open'); detailKey=null; }
-function editFromDetail() { openEditModal(detailKey); closeDetail(); }
-function deleteFromDetail() {
-  if (!detailKey) return;
-  const name = assets[detailKey]?.name || 'this asset';
-  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-  assetsRef.child(detailKey).remove();
-  closeDetail();
-  showToast('🗑 Asset deleted');
-}
-
-// ── Modal ──
-function openAddModal() {
-  if (!assetsRef) { showToast('⚠️ Connect Firebase first in Settings'); showView('setup'); return; }
-  editKey = null;
-  document.getElementById('modal-title').textContent = 'Add Asset';
-  ['f-id','f-name','f-brand','f-model','f-serial','f-assigned','f-dept','f-notes'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-purchase').value='';
-  document.getElementById('f-warranty').value='';
-  document.getElementById('f-cat').value='Laptop';
-  document.getElementById('f-cond2').value='Good';
-  document.getElementById('f-status2').value='Active';
-  document.getElementById('modal-overlay').classList.add('open');
-}
-function openEditModal(key) {
-  editKey = key;
-  const a = assets[key];
-  if (!a) return;
-  document.getElementById('modal-title').textContent = 'Edit Asset';
-  document.getElementById('f-id').value=a.id||'';
-  document.getElementById('f-name').value=a.name||'';
-  document.getElementById('f-brand').value=a.brand||'';
-  document.getElementById('f-model').value=a.model||'';
-  document.getElementById('f-serial').value=a.serial||'';
-  document.getElementById('f-assigned').value=a.assigned||'';
-  document.getElementById('f-dept').value=a.dept||'';
-  document.getElementById('f-notes').value=a.notes||'';
-  document.getElementById('f-purchase').value=a.purchase||'';
-  document.getElementById('f-warranty').value=a.warranty||'';
-  document.getElementById('f-cat').value=a.cat||'Laptop';
-  document.getElementById('f-cond2').value=a.cond||'Good';
-  document.getElementById('f-status2').value=a.status||'Active';
-  document.getElementById('modal-overlay').classList.add('open');
-}
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
-
-function saveAsset() {
-  if (!assetsRef) { showToast('⚠️ Not connected to Firebase'); return; }
-  const a = {
-    id: document.getElementById('f-id').value.trim(),
-    name: document.getElementById('f-name').value.trim(),
-    cat: document.getElementById('f-cat').value,
-    brand: document.getElementById('f-brand').value.trim(),
-    model: document.getElementById('f-model').value.trim(),
-    serial: document.getElementById('f-serial').value.trim(),
-    assigned: document.getElementById('f-assigned').value.trim(),
-    dept: document.getElementById('f-dept').value.trim(),
-    purchase: document.getElementById('f-purchase').value,
-    warranty: document.getElementById('f-warranty').value,
-    cond: document.getElementById('f-cond2').value,
-    status: document.getElementById('f-status2').value,
-    notes: document.getElementById('f-notes').value.trim(),
-    updatedAt: new Date().toISOString(),
-  };
-  if (!a.name) { showToast('⚠️ Asset name is required'); return; }
-  if (editKey) {
-    assetsRef.child(editKey).update(a);
-    showToast('✅ Asset updated');
-  } else {
-    assetsRef.push(a);
-    showToast('✅ Asset added');
-  }
-  closeModal();
-}
-
-// ── Dashboard ──
-function renderDashboard() {
-  const list = assetList();
-  if (!list.length) {
-    document.getElementById('dashboard-content').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">No data yet</div><div class="empty-sub">Add assets to see charts.</div></div>`;
-    return;
-  }
-  const grp = (key) => list.reduce((acc,a)=>{ const v=a[key]||'Unknown'; acc[v]=(acc[v]||0)+1; return acc; },{});
-  const barCard = (title, obj, color) => {
-    const max = Math.max(...Object.values(obj));
-    const rows = Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
-      <div class="bar-row">
-        <div class="bar-label"><span>${esc(k)}</span><span style="color:var(--muted)">${v}</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${color}"></div></div>
-      </div>`).join('');
-    return `<div class="dash-card"><div class="dash-card-title">${title}</div>${rows}</div>`;
-  };
-  document.getElementById('dashboard-content').innerHTML =
-    barCard('By Status', grp('status'), 'var(--accent)') +
-    barCard('By Department', grp('dept'), 'var(--accent2)') +
-    barCard('By Category', grp('cat'), 'var(--success)') +
-    barCard('By Condition', grp('cond'), 'var(--warning)');
-}
-
-// ── Export ──
-function exportCSV() {
-  const list = assetList();
-  const header = 'Asset ID,Name,Category,Brand,Model,Serial Number,Assigned To,Department,Purchase Date,Warranty Expiry,Condition,Status,Notes';
-  const rows = list.map(a=>[a.id,a.name,a.cat,a.brand,a.model,a.serial,a.assigned,a.dept,a.purchase,a.warranty,a.cond,a.status,a.notes]
-    .map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(','));
-  const blob = new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const el = document.createElement('a');
-  el.href=url; el.download='asset-register.csv'; el.click();
-  showToast('📥 CSV exported');
+  if (tab==='issue') populateIssueSelects();
+  if (tab==='serials') renderSerials();
+  if (tab==='employees') renderEmployees();
+  if (tab==='history') renderHistory();
+  if (tab==='config') fillCfgForm();
 }
 
 // ── Helpers ──
-function statusBadge(s) {
-  const m={Active:'badge-active',Inactive:'badge-inactive',Maintenance:'badge-maintenance',Retired:'badge-retired'};
-  return `<span class="badge ${m[s]||'badge-retired'}">${esc(s)||'—'}</span>`;
-}
-function condBadge(c) {
-  const m={Excellent:'cond-excellent',Good:'cond-good',Fair:'cond-fair',Poor:'cond-poor'};
-  return `<span class="condition-badge ${m[c]||''}">${esc(c)||'—'}</span>`;
-}
-function warrantyClass(d) {
-  if (!d) return 'expired';
-  const days=(new Date(d)-new Date())/86400000;
-  return days<0?'expired':days<90?'soon':'ok';
-}
-function formatDate(d) {
-  if (!d) return '—';
-  try{return new Date(d).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}
-}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function assetList() { return Object.entries(assets).map(([k,v])=>({...v,_key:k})); }
+function empList() { return Object.entries(employees).map(([k,v])=>({...v,_key:k})); }
+function histList() { return Object.entries(historyLog).map(([k,v])=>({...v,_key:k})).sort((a,b)=>b.ts.localeCompare(a.ts)); }
+function getEmpByEmpId(id) { return empList().find(e=>e.id===id); }
+function getEmpName(id) { const e=getEmpByEmpId(id); return e?e.first+' '+e.last:'—'; }
+function initials(e) { return ((e.first||'')[0]+(e.last||'')[0]||'').toUpperCase(); }
+function assetCount(empId) { return assetList().filter(a=>a.empId===empId&&a.status==='Issued').length; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+function updateStats() {
+  const list = assetList();
+  const total=list.length, issued=list.filter(a=>a.status==='Issued').length, avail=list.filter(a=>a.status==='Available').length, maint=list.filter(a=>a.status==='Maintenance').length;
+  ['m-total','h-total'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=total; });
+  ['m-issued','h-issued'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=issued; });
+  ['m-avail','h-available'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=avail; });
+  const mm=document.getElementById('m-maint'); if(mm) mm.textContent=maint;
+}
+
+function statusBadge(s) {
+  const m={Available:'badge-green',Issued:'badge-amber',Maintenance:'badge-red',Retired:'badge-gray'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+function catBadge(c) { return `<span class="badge badge-navy">${esc(c)}</span>`; }
+
+// ── Assets ──
+function renderAssets() {
+  const q=(document.getElementById('asset-search')||{}).value?.toLowerCase()||'';
+  const cat=(document.getElementById('asset-cat')||{}).value||'';
+  const stat=(document.getElementById('asset-status')||{}).value||'';
+  let list = assetList().filter(a=>
+    (!q||[a.id,a.desc,a.serial,a.brand].join(' ').toLowerCase().includes(q))
+    &&(!cat||a.cat===cat)&&(!stat||a.status===stat)
+  );
+  const cnt=document.getElementById('asset-count');
+  if(cnt) cnt.textContent=list.length+' of '+assetList().length;
+  const wrap=document.getElementById('asset-table-wrap');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML='<div class="empty">No assets match your filters.</div>'; return; }
+  wrap.innerHTML=`<table>
+    <thead><tr><th>Asset ID</th><th>Description</th><th>Category</th><th>Brand / Serial</th><th>Value</th><th>Status</th><th>Assigned To</th><th>Issue Date</th><th></th></tr></thead>
+    <tbody>${list.map(a=>`<tr>
+      <td><span class="mono" style="color:var(--muted)">${esc(a.id)}</span></td>
+      <td style="font-weight:600;color:var(--navy)">${esc(a.desc)}</td>
+      <td>${catBadge(a.cat)}</td>
+      <td><div style="font-size:12px;color:var(--muted)">${esc(a.brand||'')}</div>${a.serial?`<span class="sn-chip">${esc(a.serial)}</span>`:'<span style="color:#dc2626;font-size:11px">No serial</span>'}</td>
+      <td style="font-size:13px;color:var(--muted)">${a.value?'R '+Number(a.value).toLocaleString('en-ZA'):'—'}</td>
+      <td>${statusBadge(a.status)}</td>
+      <td>${a.empId?getEmpName(a.empId):'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--muted)">${a.issueDate||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="action-btn danger" onclick="deleteAsset('${a._key}',event)"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+  updateStats();
+}
+
+function deleteAsset(key, e) {
+  e.stopPropagation();
+  const a=assets[key];
+  if(!a) return;
+  if(a.status==='Issued'){showToast('⚠️ Return this asset before deleting.');return;}
+  if(!confirm(`Delete "${a.desc}"?`)) return;
+  assetsRef ? assetsRef.child(key).remove() : (delete assets[key], renderAssets());
+  showToast('🗑 Asset deleted');
+}
+
+function saveAsset() {
+  const id=document.getElementById('f-id').value.trim(), desc=document.getElementById('f-desc').value.trim();
+  if(!id||!desc){showToast('⚠️ Asset ID and description are required.');return;}
+  if(assetList().find(a=>a.id===id)){showToast('⚠️ Asset ID already exists.');return;}
+  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,status:document.getElementById('f-status').value,empId:'',issueDate:'',notes:document.getElementById('f-notes').value.trim(),createdAt:now()};
+  const logEntry={ts:now(),event:'added',assetId:a.id,desc:a.desc,empId:'',notes:'Added to register'};
+  if(assetsRef){assetsRef.push(a);histRef&&histRef.push(logEntry);}
+  else{assets['local_'+Date.now()]=a;historyLog['local_'+Date.now()]=logEntry;renderAssets();}
+  closeModal('modal-add-asset');
+  ['f-id','f-desc','f-brand','f-serial','f-pdate','f-value','f-warranty','f-notes'].forEach(id=>document.getElementById(id).value='');
+  showToast('✅ Asset added');
+}
+
+// ── Serial numbers ──
+function renderSerials() {
+  const q=(document.getElementById('sn-search')||{}).value?.toLowerCase()||'';
+  const cat=(document.getElementById('sn-cat')||{}).value||'';
+  const has=(document.getElementById('sn-has')||{}).value||'';
+  const list=assetList().filter(a=>{
+    if(has==='yes'&&!a.serial) return false;
+    if(has==='no'&&a.serial) return false;
+    if(cat&&a.cat!==cat) return false;
+    if(q&&![a.id,a.desc,a.serial].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const withSN=assetList().filter(a=>a.serial).length, wo=assetList().length-withSN;
+  const sc=document.getElementById('sn-count'); if(sc) sc.textContent=withSN;
+  const sw=document.getElementById('sn-with'); if(sw) sw.textContent=withSN;
+  const swo=document.getElementById('sn-without'); if(swo) swo.textContent=wo;
+  const tb=document.getElementById('sn-tbody'); if(!tb) return;
+  if(!list.length){tb.innerHTML='<tr><td colspan="7" class="empty">No results found.</td></tr>';return;}
+  tb.innerHTML=list.map(a=>`<tr>
+    <td><span class="mono" style="color:var(--muted)">${esc(a.id)}</span></td>
+    <td style="font-weight:600">${esc(a.desc)}</td>
+    <td>${catBadge(a.cat)}</td>
+    <td>${a.serial?`<span class="sn-chip">${esc(a.serial)}</span>`:'<span style="color:#dc2626;font-size:12px"><i class="ti ti-alert-circle"></i> Not recorded</span>'}</td>
+    <td>${statusBadge(a.status)}</td>
+    <td style="font-size:13px">${a.empId?getEmpName(a.empId):'—'}</td>
+    <td style="white-space:nowrap">
+      <button class="action-btn" onclick="openEditSerial('${a._key}')"><i class="ti ti-edit"></i> Edit</button>
+      ${a.serial?`<button class="action-btn" onclick="copySN('${esc(a.serial)}',this)" title="Copy"><i class="ti ti-copy"></i></button>`:''}
+    </td>
+  </tr>`).join('');
+}
+
+function openEditSerial(key) {
+  const a=assets[key]; if(!a) return;
+  editingSerialId=key;
+  document.getElementById('edit-sn-label').textContent=`${a.id} — ${a.desc}`;
+  document.getElementById('edit-sn-val').value=a.serial||'';
+  openModal('modal-edit-serial');
+}
+function saveSerial() {
+  const val=document.getElementById('edit-sn-val').value.trim();
+  if(assetsRef){ assetsRef.child(editingSerialId).update({serial:val}); }
+  else if(assets[editingSerialId]){ assets[editingSerialId].serial=val; renderSerials(); renderAssets(); }
+  closeModal('modal-edit-serial');
+  showToast('✅ Serial number updated');
+}
+function copySN(sn,btn){
+  navigator.clipboard.writeText(sn).then(()=>{btn.innerHTML='<i class="ti ti-check"></i>';setTimeout(()=>{btn.innerHTML='<i class="ti ti-copy"></i>';},1500);});
+}
+
+// ── Employees ──
+function renderEmployees() {
+  const q=(document.getElementById('emp-search')||{}).value?.toLowerCase()||'';
+  const dept=(document.getElementById('emp-dept')||{}).value||'';
+  const list=empList().filter(e=>(!q||(e.first+' '+e.last+e.id).toLowerCase().includes(q))&&(!dept||e.dept===dept));
+  const grid=document.getElementById('emp-grid'); if(!grid) return;
+  grid.innerHTML=list.map(e=>`<div class="emp-card">
+    <div class="emp-avatar">${initials(e)}</div>
+    <div class="emp-name">${esc(e.first)} ${esc(e.last)}</div>
+    <div class="emp-dept">${esc(e.dept)} · <span class="mono">${esc(e.id)}</span></div>
+    <div class="emp-count"><i class="ti ti-device-laptop"></i> ${assetCount(e.id)} asset${assetCount(e.id)!==1?'s':''} held</div>
+  </div>`).join('');
+  const tb=document.getElementById('emp-tbody'); if(!tb) return;
+  if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">No employees found.</td></tr>';return;}
+  tb.innerHTML=list.map(e=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--red));color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0">${initials(e)}</div><div><div style="font-weight:600">${esc(e.first)} ${esc(e.last)}</div><div class="mono" style="color:var(--muted);font-size:11px">${esc(e.id)}</div></div></div></td>
+    <td><span class="badge badge-navy">${esc(e.dept)}</span></td>
+    <td style="color:var(--muted);font-size:12px">${esc(e.email||'—')}</td>
+    <td><span class="badge ${assetCount(e.id)>0?'badge-amber':'badge-gray'}">${assetCount(e.id)} asset${assetCount(e.id)!==1?'s':''}</span></td>
+    <td><button class="action-btn danger" onclick="deleteEmp('${e._key}')"><i class="ti ti-trash"></i></button></td>
+  </tr>`).join('');
+}
+
+function saveEmployee() {
+  const first=document.getElementById('f-first').value.trim(), last=document.getElementById('f-last').value.trim(), id=document.getElementById('f-empid').value.trim();
+  if(!first||!last||!id){showToast('⚠️ Name and Employee ID are required.');return;}
+  if(empList().find(e=>e.id===id)){showToast('⚠️ Employee ID already exists.');return;}
+  const emp={id,first,last,dept:document.getElementById('f-edept').value,email:document.getElementById('f-email').value.trim()};
+  if(empRef) empRef.push(emp); else { employees['local_'+Date.now()]=emp; renderEmployees(); }
+  ['f-first','f-last','f-empid','f-email'].forEach(i=>document.getElementById(i).value='');
+  closeModal('modal-add-emp'); showToast('✅ Employee added');
+}
+
+function deleteEmp(key) {
+  const e=employees[key]; if(!e) return;
+  if(assetCount(e.id)>0){showToast('⚠️ Return all assets before removing employee.');return;}
+  if(!confirm(`Remove ${e.first} ${e.last}?`)) return;
+  if(empRef) empRef.child(key).remove(); else { delete employees[key]; renderEmployees(); }
+  showToast('🗑 Employee removed');
+}
+
+// ── Issue / Return ──
+function populateIssueSelects() {
+  document.getElementById('issue-emp').innerHTML='<option value="">— choose employee —</option>'+empList().map(e=>`<option value="${esc(e.id)}">${esc(e.first)} ${esc(e.last)} (${esc(e.dept)})</option>`).join('');
+  document.getElementById('issue-asset').innerHTML='<option value="">— choose asset —</option>'+assetList().filter(a=>a.status==='Available').map(a=>`<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)}</option>`).join('');
+  document.getElementById('return-asset').innerHTML='<option value="">— choose asset —</option>'+assetList().filter(a=>a.status==='Issued').map(a=>`<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)} [${getEmpName(a.empId)}]</option>`).join('');
+}
+
+function issueAsset() {
+  const empId=document.getElementById('issue-emp').value, assetKey=document.getElementById('issue-asset').value, notes=document.getElementById('issue-notes').value;
+  if(!empId||!assetKey){showToast('⚠️ Please select an employee and an asset.');return;}
+  const a=assets[assetKey]; if(!a) return;
+  const update={status:'Issued',empId,issueDate:today()};
+  const log={ts:now(),event:'issued',assetId:a.id,desc:a.desc,empId,notes};
+  if(assetsRef){assetsRef.child(assetKey).update(update);histRef&&histRef.push(log);}
+  else{Object.assign(assets[assetKey],update);historyLog['local_'+Date.now()]=log;renderAssets();}
+  document.getElementById('issue-notes').value='';
+  populateIssueSelects();
+  showToast(`✅ ${a.desc} issued to ${getEmpName(empId)}`);
+}
+
+function returnAsset() {
+  const assetKey=document.getElementById('return-asset').value, cond=document.getElementById('return-cond').value, notes=document.getElementById('return-notes').value;
+  if(!assetKey){showToast('⚠️ Please select an asset to return.');return;}
+  const a=assets[assetKey]; if(!a) return;
+  const newStatus=cond==='Requires maintenance'?'Maintenance':'Available';
+  const log={ts:now(),event:'returned',assetId:a.id,desc:a.desc,empId:a.empId,notes:`Condition: ${cond}${notes?' — '+notes:''}`};
+  const update={status:newStatus,empId:'',issueDate:''};
+  if(assetsRef){assetsRef.child(assetKey).update(update);histRef&&histRef.push(log);}
+  else{Object.assign(assets[assetKey],update);historyLog['local_'+Date.now()]=log;renderAssets();}
+  document.getElementById('return-notes').value='';
+  populateIssueSelects();
+  showToast(`✅ ${a.desc} returned`);
+}
+
+// ── History ──
+function renderHistory() {
+  const q=(document.getElementById('hist-search')||{}).value?.toLowerCase()||'';
+  const f=(document.getElementById('hist-filter')||{}).value||'';
+  const list=histList().filter(h=>(!f||h.event===f)&&(!q||[h.assetId,h.desc,getEmpName(h.empId)].join(' ').toLowerCase().includes(q)));
+  const tb=document.getElementById('hist-tbody'); if(!tb) return;
+  if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">No history records.</td></tr>';return;}
+  const evMap={issued:['badge-amber','Issued'],returned:['badge-green','Returned'],added:['badge-blue','Added']};
+  tb.innerHTML=list.map(h=>{const[bc,el]=evMap[h.event]||['badge-gray',h.event];return`<tr>
+    <td class="mono" style="color:var(--muted);font-size:12px;white-space:nowrap">${esc(h.ts)}</td>
+    <td><span class="badge ${bc}">${el}</span></td>
+    <td style="font-weight:500">${esc(h.desc)} <span class="mono" style="color:var(--muted);font-size:11px">${esc(h.assetId)}</span></td>
+    <td>${h.empId?getEmpName(h.empId):'—'}</td>
+    <td style="color:var(--muted);font-size:12px">${esc(h.notes||'—')}</td>
+  </tr>`;}).join('');
+}
+
+// ── Export to Excel ──
+function exportCSV() {
+  const list=assetList();
+  const rows=list.map(a=>({
+    'Asset ID': a.id||'',
+    'Description': a.desc||'',
+    'Category': a.cat||'',
+    'Brand': a.brand||'',
+    'Serial Number': a.serial||'',
+    'Purchase Date': a.pdate||'',
+    'Value (R)': a.value||'',
+    'Warranty Expiry': a.warranty||'',
+    'Status': a.status||'',
+    'Assigned To': getEmpName(a.empId),
+    'Issue Date': a.issueDate||'',
+    'Notes': a.notes||''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Column widths
+  ws['!cols'] = [
+    {wch:12},{wch:28},{wch:12},{wch:14},{wch:18},
+    {wch:14},{wch:10},{wch:14},{wch:12},{wch:22},{wch:12},{wch:24}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Assets');
+  XLSX.writeFile(wb, 'XCorp-Asset-Register.xlsx');
+  showToast('📥 Excel file exported');
+}
+
+// ── Modals ──
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function overlayClose(e,id){ if(e.target.id===id) closeModal(id); }
+
+// ── Toast ──
 let toastTimer;
 function showToast(msg,dur=3500){
   const t=document.getElementById('toast');
   document.getElementById('toast-msg').textContent=msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
+  t.classList.add('show');clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),dur);
 }
 
-document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeDetail();}
-  if((e.ctrlKey||e.metaKey)&&e.key==='k'){document.getElementById('search').focus();e.preventDefault();}
-});
+document.addEventListener('keydown',e=>{if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
 </body>
 </html>
