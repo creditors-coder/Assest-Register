@@ -239,10 +239,17 @@ tbody tr:hover td{background:#f8faff;cursor:pointer;}
 /* ── Modal ── */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(13,31,60,.55);
-  display:none;align-items:center;justify-content:center;z-index:200;
+  visibility:hidden;opacity:0;
+  display:flex;align-items:center;justify-content:center;z-index:9999;
   backdrop-filter:blur(2px);
+  transition:opacity .2s;
+  pointer-events:none;
 }
-.modal-overlay.open{display:flex!important;}
+.modal-overlay.open{
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:all !important;
+}
 .modal{
   background:var(--surface);border-radius:var(--radius-lg);
   border:1px solid var(--border);width:500px;max-width:95vw;
@@ -421,7 +428,7 @@ body.dark .sync-pill { background: rgba(255,255,255,0.06); border-color: rgba(25
         <option>Available</option><option>Issued</option><option>Maintenance</option><option>Retired</option>
       </select>
       <button class="btn" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
-      <button class="btn primary" onclick="openModal('add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
+      <button class="btn primary" onclick="openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
     </div>
     <div class="card">
       <div class="card-header">
@@ -469,7 +476,7 @@ body.dark .sync-pill { background: rgba(255,255,255,0.06); border-color: rgba(25
         <option value="">All departments</option>
         <option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option>
       </select>
-      <button class="btn primary" onclick="openModal('add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
+      <button class="btn primary" onclick="openModal('modal-add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
     </div>
     <div class="emp-grid" id="emp-grid"></div>
     <div class="card">
@@ -1018,9 +1025,21 @@ function exportCSV() {
 }
 
 // ── Modals ──
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-function overlayClose(e,id){ if(e.target.id===id) closeModal(id); }
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) { console.error('Modal not found:', id); return; }
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function overlayClose(e, id) {
+  if (e.target === e.currentTarget) closeModal(id);
+}
 
 // ── Toast ──
 let toastTimer;
