@@ -478,7 +478,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
         <option>Available</option><option>Issued</option><option>Maintenance</option><option>Retired</option>
       </select>
       <button class="btn" onclick="exportCSV()"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
-      <button class="btn primary" onclick="openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
+      <button class="btn primary" onclick="editingAssetKey=null;document.getElementById('modal-title-asset').textContent='Add New Asset';document.getElementById('modal-save-asset').textContent='Save Asset';openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
     </div>
     <div class="card">
       <div class="card-header">
@@ -526,7 +526,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
         <option value="">All departments</option>
         <option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option>
       </select>
-      <button class="btn primary" onclick="openModal('modal-add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
+      <button class="btn primary" onclick="editingEmpKey=null;document.getElementById('modal-title-emp').textContent='Add Employee';document.getElementById('modal-save-emp').textContent='Save Employee';openModal('modal-add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
     </div>
     <div class="emp-grid" id="emp-grid"></div>
     <div class="card">
@@ -571,10 +571,11 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
         <option value="">All events</option>
         <option value="issued">Issued</option><option value="returned">Returned</option><option value="added">Added</option>
       </select>
+      <button class="btn" style="margin-left:auto;color:#dc2626;border-color:#fca5a5" onclick="clearAllHistory()"><i class="ti ti-trash"></i> Clear All History</button>
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>Date &amp; Time</th><th>Event</th><th>Asset</th><th>Employee</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Date &amp; Time</th><th>Event</th><th>Asset</th><th>Employee</th><th>Notes</th><th></th></tr></thead>
         <tbody id="hist-tbody"></tbody>
       </table>
     </div>
@@ -614,7 +615,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
 <!-- MODAL: Add Asset -->
 <div class="modal-overlay" id="modal-add-asset" onclick="overlayClose(event,'modal-add-asset')">
   <div class="modal">
-    <div class="modal-head"><h3>Add New Asset</h3><button class="action-btn" onclick="closeModal('modal-add-asset')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-head"><h3 id="modal-title-asset">Add New Asset</h3><button class="action-btn" onclick="closeModal('modal-add-asset')"><i class="ti ti-x"></i></button></div>
     <div class="modal-body">
       <div class="field-row">
         <div class="field"><label>Asset ID *</label><input type="text" id="f-id" placeholder="e.g. XC-LT-001"></div>
@@ -641,7 +642,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('modal-add-asset')">Cancel</button>
-      <button class="btn primary" onclick="saveAsset()"><i class="ti ti-check"></i> Save Asset</button>
+      <button class="btn primary" id="modal-save-asset" onclick="saveAssetDispatch()"><i class="ti ti-check"></i> Save Asset</button>
     </div>
   </div>
 </div>
@@ -667,7 +668,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
 <!-- MODAL: Add Employee -->
 <div class="modal-overlay" id="modal-add-emp" onclick="overlayClose(event,'modal-add-emp')">
   <div class="modal">
-    <div class="modal-head"><h3>Add Employee</h3><button class="action-btn" onclick="closeModal('modal-add-emp')"><i class="ti ti-x"></i></button></div>
+    <div class="modal-head"><h3 id="modal-title-emp">Add Employee</h3><button class="action-btn" onclick="closeModal('modal-add-emp')"><i class="ti ti-x"></i></button></div>
     <div class="modal-body">
       <div class="field-row">
         <div class="field"><label>First Name *</label><input type="text" id="f-first" placeholder="First name"></div>
@@ -683,7 +684,7 @@ body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('modal-add-emp')">Cancel</button>
-      <button class="btn primary" onclick="saveEmployee()"><i class="ti ti-check"></i> Save Employee</button>
+      <button class="btn primary" id="modal-save-emp" onclick="saveEmpDispatch()"><i class="ti ti-check"></i> Save Employee</button>
     </div>
   </div>
 </div>
@@ -835,6 +836,114 @@ function renderAssets() {
   updateStats();
 }
 
+// ── Edit Asset ──
+let editingAssetKey = null;
+function openEditAsset(key, e) {
+  if(e) e.stopPropagation();
+  editingAssetKey = key;
+  const a = assets[key]; if(!a) return;
+  document.getElementById('f-id').value = a.id||'';
+  document.getElementById('f-desc').value = a.desc||'';
+  document.getElementById('f-cat').value = a.cat||'Laptop';
+  document.getElementById('f-brand').value = a.brand||'';
+  document.getElementById('f-serial').value = a.serial||'';
+  document.getElementById('f-pdate').value = a.pdate||'';
+  document.getElementById('f-value').value = a.value||'';
+  document.getElementById('f-warranty').value = a.warranty||'';
+  document.getElementById('f-status').value = a.status||'Available';
+  document.getElementById('f-notes').value = a.notes||'';
+  document.getElementById('modal-title-asset').textContent = 'Edit Asset';
+  document.getElementById('modal-save-asset').textContent = 'Update Asset';
+  openModal('modal-add-asset');
+}
+
+function saveAssetDispatch() {
+  if (editingAssetKey) updateAsset(); else saveAsset();
+}
+
+function updateAsset() {
+  const id = document.getElementById('f-id').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  if (!id || !desc) { showToast('⚠️ Asset ID and Description are required.'); return; }
+  const a = {
+    id, desc,
+    cat: document.getElementById('f-cat').value,
+    brand: document.getElementById('f-brand').value.trim(),
+    serial: document.getElementById('f-serial').value.trim(),
+    pdate: document.getElementById('f-pdate').value,
+    value: parseFloat(document.getElementById('f-value').value)||0,
+    warranty: document.getElementById('f-warranty').value,
+    status: document.getElementById('f-status').value||'Available',
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  if (assetsRef) {
+    assetsRef.child(editingAssetKey).update(a).then(()=>showToast('✅ Asset updated')).catch(err=>showToast('❌ '+err.message));
+  } else {
+    Object.assign(assets[editingAssetKey], a);
+    renderAssets();
+    showToast('✅ Asset updated');
+  }
+  editingAssetKey = null;
+  document.getElementById('modal-title-asset').textContent = 'Add New Asset';
+  document.getElementById('modal-save-asset').textContent = 'Save Asset';
+  ['f-id','f-desc','f-brand','f-serial','f-pdate','f-value','f-warranty','f-notes'].forEach(fid => document.getElementById(fid).value = '');
+  closeModal('modal-add-asset');
+}
+
+// ── Edit Employee ──
+let editingEmpKey = null;
+function openEditEmp(key) {
+  editingEmpKey = key;
+  const e = employees[key]; if(!e) return;
+  document.getElementById('f-first').value = e.first||'';
+  document.getElementById('f-last').value = e.last||'';
+  document.getElementById('f-empid').value = e.id||'';
+  document.getElementById('f-edept').value = e.dept||'IT';
+  document.getElementById('f-email').value = e.email||'';
+  document.getElementById('modal-title-emp').textContent = 'Edit Employee';
+  document.getElementById('modal-save-emp').textContent = 'Update Employee';
+  openModal('modal-add-emp');
+}
+
+function saveEmpDispatch() {
+  if (editingEmpKey) updateEmployee(); else saveEmployee();
+}
+
+function updateEmployee() {
+  const first = document.getElementById('f-first').value.trim();
+  const last = document.getElementById('f-last').value.trim();
+  const id = document.getElementById('f-empid').value.trim();
+  if (!first||!last||!id) { showToast('⚠️ All fields are required.'); return; }
+  const emp = { id, first, last, dept: document.getElementById('f-edept').value, email: document.getElementById('f-email').value.trim() };
+  if (empRef) {
+    empRef.child(editingEmpKey).update(emp).then(()=>showToast('✅ Employee updated')).catch(err=>showToast('❌ '+err.message));
+  } else {
+    Object.assign(employees[editingEmpKey], emp);
+    renderEmployees();
+    showToast('✅ Employee updated');
+  }
+  editingEmpKey = null;
+  document.getElementById('modal-title-emp').textContent = 'Add Employee';
+  document.getElementById('modal-save-emp').textContent = 'Save Employee';
+  ['f-first','f-last','f-empid','f-email'].forEach(i => document.getElementById(i).value = '');
+  closeModal('modal-add-emp');
+}
+
+// ── Delete History ──
+function deleteHistory(key) {
+  if (!confirm('Delete this history entry?')) return;
+  if (histRef) histRef.child(key).remove();
+  else { delete historyLog[key]; renderHistory(); }
+  showToast('🗑 History entry deleted');
+}
+
+function clearAllHistory() {
+  if (!confirm('Delete ALL history? This cannot be undone.')) return;
+  if (histRef) histRef.remove();
+  else { historyLog = {}; renderHistory(); }
+  showToast('🗑 All history cleared');
+}
+
 function deleteAsset(key, e) {
   e.stopPropagation();
   const a=assets[key];
@@ -908,7 +1017,7 @@ function renderSerials() {
     <td>${catBadge(a.cat)}</td>
     <td>${a.serial?`<span class="sn-chip">${esc(a.serial)}</span>`:'<span style="color:#dc2626;font-size:12px"><i class="ti ti-alert-circle"></i> Not recorded</span>'}</td>
     <td>${statusBadge(a.status)}</td>
-    <td style="font-size:13px">${a.empId?getEmpName(a.empId):'—'}</td>
+    <td style="font-size:13px;font-weight:500">${a.empId?getEmpName(a.empId):'<span style="color:var(--muted)">Unassigned</span>'}</td>
     <td style="white-space:nowrap">
       <button class="action-btn" onclick="openEditSerial('${a._key}')"><i class="ti ti-edit"></i> Edit</button>
       ${a.serial?`<button class="action-btn" onclick="copySN('${esc(a.serial)}',this)" title="Copy"><i class="ti ti-copy"></i></button>`:''}
@@ -953,7 +1062,10 @@ function renderEmployees() {
     <td><span class="badge badge-navy">${esc(e.dept)}</span></td>
     <td style="color:var(--muted);font-size:12px">${esc(e.email||'—')}</td>
     <td><span class="badge ${assetCount(e.id)>0?'badge-amber':'badge-gray'}">${assetCount(e.id)} asset${assetCount(e.id)!==1?'s':''}</span></td>
-    <td><button class="action-btn danger" onclick="deleteEmp('${e._key}')"><i class="ti ti-trash"></i></button></td>
+    <td style="white-space:nowrap;display:flex;gap:4px">
+      <button class="action-btn" onclick="openEditEmp('${e._key}')"><i class="ti ti-edit"></i> Edit</button>
+      <button class="action-btn danger" onclick="deleteEmp('${e._key}')"><i class="ti ti-trash"></i></button>
+    </td>
   </tr>`).join('');
 }
 
@@ -1009,7 +1121,7 @@ function populateIssueSelects() {
     empOptions.map(e => `<option value="${esc(e.id)}">${esc(e.first)} ${esc(e.last)} (${esc(e.dept)})</option>`).join('');
 
   assetSel.innerHTML = '<option value="">— choose asset —</option>' +
-    availAssets.map(a => `<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)}</option>`).join('');
+    availAssets.map(a => `<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)}${a.serial?' [SN: '+esc(a.serial)+']':''}</option>`).join('');
 
   returnSel.innerHTML = '<option value="">— choose asset —</option>' +
     issuedAssets.map(a => `<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)} [${getEmpName(a.empId)}]</option>`).join('');
@@ -1060,6 +1172,7 @@ function renderHistory() {
     <td style="font-weight:500">${esc(h.desc)} <span class="mono" style="color:var(--muted);font-size:11px">${esc(h.assetId)}</span></td>
     <td>${h.empId?getEmpName(h.empId):'—'}</td>
     <td style="color:var(--muted);font-size:12px">${esc(h.notes||'—')}</td>
+    <td><button class="action-btn danger" onclick="deleteHistory('${h._key}')"><i class="ti ti-trash"></i></button></td>
   </tr>`;}).join('');
 }
 
