@@ -325,43 +325,93 @@ body.dark {
   --surface3:#243050;
   --border:#2a3a55;
   --text:#e2e8f4;
-  --muted:#7a8baa;
+  --muted:#9ab0cc;
   --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
   --shadow-lg:0 8px 32px rgba(0,0,0,.4);
 }
-body.dark .metric { background: var(--surface); }
-body.dark .card { background: var(--surface); }
-body.dark .emp-card { background: var(--surface); }
-body.dark .issue-card { background: var(--surface); }
-body.dark .modal { background: var(--surface); }
-body.dark .modal-head { background: var(--surface); }
-body.dark .config-fields { background: var(--surface); }
-body.dark table thead th { background: var(--surface2); }
-body.dark tbody tr:hover td { background: var(--surface3); }
-body.dark .toolbar input, body.dark .toolbar select { background: var(--surface); color: var(--text); border-color: var(--border); }
-body.dark .field input, body.dark .field select, body.dark .field textarea { background: var(--surface2); color: var(--text); border-color: var(--border); }
-body.dark .field input:focus, body.dark .field select:focus { background: var(--surface3); }
-body.dark .btn { background: var(--surface); color: var(--text); border-color: var(--border); }
-body.dark .btn:hover { background: var(--surface2); }
-body.dark .sn-chip { background: var(--surface2); border-color: var(--border); color: var(--text); }
-body.dark .sn-stat { background: var(--surface); }
+/* Global text fix */
+body.dark, body.dark p, body.dark span, body.dark div,
+body.dark label, body.dark td, body.dark th, body.dark h1,
+body.dark h2, body.dark h3, body.dark h4, body.dark li { color: var(--text); }
+body.dark .text-muted, body.dark .muted { color: var(--muted) !important; }
+
+/* Layout */
+body.dark .metric { background: var(--surface); border-color: var(--border); }
+body.dark .metric-val { color: #e2e8f4; }
+body.dark .metric-lbl { color: var(--muted); }
+body.dark .card { background: var(--surface); border-color: var(--border); }
+body.dark .card-header { background: var(--surface); border-color: var(--border); }
+body.dark .card-title { color: #e2e8f4; }
+body.dark .card-count { color: var(--muted); }
+body.dark .emp-card { background: var(--surface); border-color: var(--border); }
+body.dark .emp-card:hover { border-color: #4f8ef7; }
+body.dark .emp-name { color: #e2e8f4; }
+body.dark .emp-dept { color: var(--muted); }
+body.dark .issue-card { background: var(--surface); border-color: var(--border); }
+body.dark .section-label { color: var(--muted); }
+body.dark .sn-stat { background: var(--surface); border-color: var(--border); }
+body.dark .sn-val { color: #e2e8f4; }
+body.dark .sn-lbl { color: var(--muted); }
+body.dark .config-fields { background: var(--surface); border-color: var(--border); }
+body.dark .config-title { color: #e2e8f4; }
+body.dark .config-sub { color: var(--muted); }
+body.dark .config-badge { background: #2d1f00; border-color: #78350f; color: #fbbf24; }
+
+/* Table */
+body.dark table thead th { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+body.dark tbody td { color: #e2e8f4; border-color: var(--border); }
+body.dark tbody tr { border-color: var(--border); }
+body.dark tbody tr:hover td { background: var(--surface3); color: #e2e8f4; }
+body.dark .mono { color: var(--muted); }
+body.dark .asset-id { color: var(--muted); }
+body.dark .sn-chip { background: var(--surface2); border-color: var(--border); color: #93c5fd; }
+body.dark .empty { color: var(--muted); }
+
+/* Forms & toolbar */
+body.dark .toolbar input, body.dark .toolbar select { background: var(--surface); color: #e2e8f4; border-color: var(--border); }
+body.dark .toolbar input::placeholder { color: var(--muted); }
+body.dark .field label { color: var(--muted); }
+body.dark .field input, body.dark .field select, body.dark .field textarea { background: var(--surface2); color: #e2e8f4; border-color: var(--border); }
+body.dark .field input::placeholder, body.dark .field textarea::placeholder { color: var(--muted); }
+body.dark .field input:focus, body.dark .field select:focus, body.dark .field textarea:focus { background: var(--surface3); border-color: #4f8ef7; color: #e2e8f4; }
+body.dark select option { background: var(--surface); color: #e2e8f4; }
+
+/* Buttons */
+body.dark .btn { background: var(--surface); color: #e2e8f4; border-color: var(--border); }
+body.dark .btn:hover { background: var(--surface2); color: #e2e8f4; }
+body.dark .btn.primary { background: var(--red); color: #fff; border-color: var(--red); }
+body.dark .btn.secondary { background: var(--navy3); color: #fff; border-color: var(--navy3); }
+body.dark .action-btn { color: var(--muted); border-color: var(--border); background: transparent; }
+body.dark .action-btn:hover { background: var(--surface2); color: #e2e8f4; }
+body.dark .action-btn.danger:hover { background: #2d0f0f; color: #f87171; border-color: #7f1d1d; }
+
+/* Modal */
+body.dark .modal { background: var(--surface); border-color: var(--border); }
+body.dark .modal-head { background: var(--surface); border-color: var(--border); }
+body.dark .modal-head h3 { color: #e2e8f4; }
+body.dark .modal-foot { border-color: var(--border); }
+body.dark .modal-overlay { background: rgba(0,0,0,0.7); }
+
+/* Badges */
 body.dark .badge-navy { background: #1e3358; color: #93b4f0; }
-body.dark .badge-gray { background: #2a3a55; color: #7a8baa; }
+body.dark .badge-gray { background: #2a3a55; color: #9ab0cc; }
 body.dark .badge-green { background: #0d2e1a; color: #4ade80; }
 body.dark .badge-amber { background: #2d1f00; color: #fbbf24; }
 body.dark .badge-red { background: #2d0f0f; color: #f87171; }
 body.dark .badge-blue { background: #0f1e38; color: #60a5fa; }
-body.dark .metric-icon.blue { background: #0f1e38; }
-body.dark .metric-icon.green { background: #0d2e1a; }
-body.dark .metric-icon.amber { background: #2d1f00; }
-body.dark .metric-icon.red { background: #2d0f0f; }
-body.dark .action-btn { color: var(--muted); border-color: var(--border); }
-body.dark .action-btn:hover { background: var(--surface2); color: var(--text); }
-body.dark .action-btn.danger:hover { background: #2d0f0f; color: #f87171; border-color: #7f1d1d; }
-body.dark .emp-card:hover { border-color: #4f8ef7; }
-body.dark .card-header { background: var(--surface); }
-body.dark .config-badge { background: #2d1f00; border-color: #78350f; color: #fbbf24; }
+
+/* Metric icons */
+body.dark .metric-icon.blue { background: #0f1e38; color: #60a5fa; }
+body.dark .metric-icon.green { background: #0d2e1a; color: #4ade80; }
+body.dark .metric-icon.amber { background: #2d1f00; color: #fbbf24; }
+body.dark .metric-icon.red { background: #2d0f0f; color: #f87171; }
+
+/* Misc */
 body.dark .sync-pill { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+body.dark .filter-label { color: var(--muted); }
+body.dark .nav-tab { color: rgba(255,255,255,0.5); }
+body.dark .nav-tab.active { color: #fff; }
+body.dark .nav-tab:hover { color: rgba(255,255,255,0.85); }
 
 </style>
 </head>
@@ -403,7 +453,7 @@ body.dark .sync-pill { background: rgba(255,255,255,0.06); border-color: rgba(25
   <button class="nav-tab" id="tab-employees" onclick="switchTab('employees')"><i class="ti ti-users"></i> Employees</button>
   <button class="nav-tab" id="tab-issue" onclick="switchTab('issue')"><i class="ti ti-arrows-exchange"></i> Issue / Return</button>
   <button class="nav-tab" id="tab-history" onclick="switchTab('history')"><i class="ti ti-history"></i> History</button>
-  <button class="nav-tab" id="tab-config" onclick="switchTab('config')"><i class="ti ti-settings"></i> Firebase Setup</button>
+  
 </div>
 
 <!-- ── Content ── -->
