@@ -828,7 +828,8 @@ function renderAssets() {
       <td>${statusBadge(a.status)}</td>
       <td>${a.empId?getEmpName(a.empId):'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:12px;color:var(--muted)">${a.issueDate||'—'}</td>
-      <td style="white-space:nowrap">
+      <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="action-btn" onclick="openEditAsset('${a._key}',event)"><i class="ti ti-edit"></i> Edit</button>
         <button class="action-btn danger" onclick="deleteAsset('${a._key}',event)"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`).join('')}</tbody>
