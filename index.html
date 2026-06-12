@@ -745,8 +745,8 @@ function initFirebase(cfg) {
     empRef = db.ref('employees');
     histRef = db.ref('history');
     setSyncStatus('syncing','Connecting…');
-    assetsRef.on('value', snap => { assets = snap.val()||{}; updateStats(); renderAssets(); renderSerials(); });
-    empRef.on('value', snap => { employees = snap.val()||{}; renderEmployees(); });
+    assetsRef.on('value', snap => { assets = snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
+    empRef.on('value', snap => { employees = snap.val()||{}; renderEmployees(); populateIssueSelects(); });
     histRef.on('value', snap => { historyLog = snap.val()||{}; renderHistory(); });
     setSyncStatus('live','Live sync');
     document.getElementById('cfg-status').textContent = '✅ Connected! If saving fails, update Firebase rules to allow read/write.';
@@ -770,7 +770,7 @@ function switchTab(tab) {
     document.getElementById('view-'+t).classList.toggle('hidden', t!==tab);
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
-  if (tab==='issue') populateIssueSelects();
+  if (tab==='issue') { setTimeout(populateIssueSelects, 100); }
   if (tab==='serials') renderSerials();
   if (tab==='employees') renderEmployees();
   if (tab==='history') renderHistory();
@@ -996,9 +996,27 @@ function deleteEmp(key) {
 
 // ── Issue / Return ──
 function populateIssueSelects() {
-  document.getElementById('issue-emp').innerHTML='<option value="">— choose employee —</option>'+empList().map(e=>`<option value="${esc(e.id)}">${esc(e.first)} ${esc(e.last)} (${esc(e.dept)})</option>`).join('');
-  document.getElementById('issue-asset').innerHTML='<option value="">— choose asset —</option>'+assetList().filter(a=>a.status==='Available').map(a=>`<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)}</option>`).join('');
-  document.getElementById('return-asset').innerHTML='<option value="">— choose asset —</option>'+assetList().filter(a=>a.status==='Issued').map(a=>`<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)} [${getEmpName(a.empId)}]</option>`).join('');
+  const empSel = document.getElementById('issue-emp');
+  const assetSel = document.getElementById('issue-asset');
+  const returnSel = document.getElementById('return-asset');
+  if (!empSel || !assetSel || !returnSel) return;
+
+  const empOptions = empList();
+  const availAssets = assetList().filter(a => a.status === 'Available');
+  const issuedAssets = assetList().filter(a => a.status === 'Issued');
+
+  empSel.innerHTML = '<option value="">— choose employee —</option>' +
+    empOptions.map(e => `<option value="${esc(e.id)}">${esc(e.first)} ${esc(e.last)} (${esc(e.dept)})</option>`).join('');
+
+  assetSel.innerHTML = '<option value="">— choose asset —</option>' +
+    availAssets.map(a => `<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)}</option>`).join('');
+
+  returnSel.innerHTML = '<option value="">— choose asset —</option>' +
+    issuedAssets.map(a => `<option value="${a._key}">${esc(a.id)} — ${esc(a.desc)} [${getEmpName(a.empId)}]</option>`).join('');
+
+  // Show helpful messages if empty
+  if (!empOptions.length) empSel.innerHTML = '<option value="">⚠️ No employees found — add employees first</option>';
+  if (!availAssets.length) assetSel.innerHTML = '<option value="">⚠️ No available assets — check asset status</option>';
 }
 
 function issueAsset() {
