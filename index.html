@@ -352,14 +352,7 @@ body.dark .toast{background:var(--navy3);}
   letter-spacing:.02em;
 }
 .view-only-bar.show{display:flex;}
-.logout-btn{
-  position:absolute;right:0;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
-  color:rgba(255,255,255,.8);border-radius:20px;padding:5px 12px;
-  font-size:11px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;
-  transition:all .15s;
-}
-.logout-btn:hover{background:rgba(255,255,255,.18);color:#fff;}
+
 
 </style>
 </head>
@@ -409,8 +402,8 @@ body.dark .toast{background:var(--navy3);}
   <div class="header-right">
     <div class="sync-pill"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Connecting…</span></div>
     <button class="hbtn" onclick="window.print()"><i class="ti ti-printer"></i> Print</button>
-    <div style="position:relative;display:flex;align-items:center"><button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout"></i> Sign Out</button></div>
     <button class="hbtn" id="theme-toggle" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon"></i> <span id="theme-label">Dark</span></button>
+    <button class="hbtn" onclick="doLogout()" style="background:rgba(192,57,43,.25);border-color:rgba(192,57,43,.35)"><i class="ti ti-logout"></i> Sign Out</button>
   </div>
 </div>
 
@@ -980,10 +973,27 @@ function lockViewOnly() {
     tbody tr:hover td { cursor: default !important; }
   `;
   document.head.appendChild(style);
-  // Remove issue/return tab
+  // Hide issue/return tab
   const issueTab = document.getElementById('tab-issue');
   if (issueTab) issueTab.style.display = 'none';
-  // Remove history clear button (already hidden by .btn.soft-red)
+  // Hide setup tab
+  const configTab = document.getElementById('tab-config');
+  if (configTab) configTab.style.display = 'none';
+  // Override renderRecs to hide warranty/danger warnings for view-only
+  window._origRenderRecs = window.renderRecs;
+  window.renderRecs = function() {
+    const list = assetList();
+    const wrap = document.getElementById('rec-wrap');
+    if (!wrap) return;
+    if (!list.length) { wrap.innerHTML = ''; return; }
+    const recs = [];
+    const noSerial = list.filter(a => !a.serial);
+    const maint = list.filter(a => a.status === 'Maintenance');
+    if (noSerial.length) recs.push({cls:'info', icon:'🔖', msg:`${noSerial.length} asset${noSerial.length>1?'s':''} missing a serial number`});
+    if (maint.length) recs.push({cls:'warn', icon:'🔧', msg:`${maint.length} asset${maint.length>1?'s':''} currently in maintenance`});
+    if (!recs.length) recs.push({cls:'ok', icon:'✅', msg:'All assets are in good standing'});
+    wrap.innerHTML = recs.map(r => `<div class="rec-card ${r.cls}"><span class="rec-icon">${r.icon}</span><span>${r.msg}</span></div>`).join('');
+  };
 }
 
 function doLogout() {
