@@ -362,7 +362,10 @@ body.dark .toast{background:var(--navy3);}
   font-size:11px;padding:14px 32px;
   display:flex;align-items:center;justify-content:space-between;
   flex-wrap:wrap;gap:8px;border-top:1px solid rgba(255,255,255,.06);
+  position:fixed;bottom:0;left:0;right:0;z-index:90;
 }
+/* Push page content up so footer doesn't overlap */
+.page{padding-bottom:60px;}
 .footer-links{display:flex;gap:16px;flex-wrap:wrap;}
 .footer-link{color:rgba(255,255,255,.45);cursor:pointer;text-decoration:none;transition:color .15s;}
 .footer-link:hover{color:rgba(255,255,255,.85);}
@@ -1041,7 +1044,6 @@ async function sha256(str) {
 
 function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('app-footer').style.display = 'flex';
   if (currentRole === 'view') {
     document.getElementById('view-only-bar').classList.add('show');
     lockViewOnly();
@@ -1366,7 +1368,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 </script>
 
 <!-- FOOTER -->
-<div class="app-footer" id="app-footer" style="display:none">
+<div class="app-footer" id="app-footer">
   <div class="footer-copy">© 2024 X-Corp Business Solutions (Pty) Ltd · All rights reserved · Reg No. 2012/XXXXXX/07</div>
   <div class="footer-links">
     <span class="footer-link" onclick="openPolicy('privacy')">Privacy Policy</span>
