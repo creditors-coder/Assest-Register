@@ -416,6 +416,12 @@ body.dark .policy-body .highlight{background:var(--surface2);}
 body.dark .policy-foot{background:var(--surface2);border-color:var(--border);}
 body.dark .app-footer{background:#0a1628;}
 
+
+.pass-wrap{position:relative;}
+.pass-wrap input{padding-right:40px!important;}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,.35);font-size:16px;padding:4px;transition:color .15s;display:flex;align-items:center;}
+.eye-btn:hover{color:rgba(255,255,255,.7);}
+
 </style>
 </head>
 <body>
@@ -436,7 +442,12 @@ body.dark .app-footer{background:#0a1628;}
     </div>
     <div class="login-field">
       <label>Password</label>
-      <input type="password" id="login-pass" placeholder="••••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="pass-wrap">
+        <input type="password" id="login-pass" placeholder="••••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye-btn" type="button" onclick="togglePassVis()" id="eye-btn" tabindex="-1">
+          <i class="ti ti-eye" id="eye-icon"></i>
+        </button>
+      </div>
     </div>
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-error" id="login-error">Incorrect email or password. Please try again.</div>
@@ -1030,6 +1041,7 @@ async function sha256(str) {
 
 function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-footer').style.display = 'flex';
   if (currentRole === 'view') {
     document.getElementById('view-only-bar').classList.add('show');
     lockViewOnly();
@@ -1127,6 +1139,18 @@ let lockoutUntil = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 30; // seconds
 
+function togglePassVis() {
+  const inp = document.getElementById('login-pass');
+  const icon = document.getElementById('eye-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'ti ti-eye-off';
+  } else {
+    inp.type = 'password';
+    icon.className = 'ti ti-eye';
+  }
+}
+
 async function doLogin() {
   const now = Date.now();
   if (lockoutUntil && now < lockoutUntil) {
@@ -1180,12 +1204,7 @@ async function doLogin() {
   }
 }
 
-// Show footer when logged in
-const _origShowApp = showApp;
-function showApp() {
-  _origShowApp();
-  document.getElementById('app-footer').style.display = 'flex';
-}
+
 
 // Policy content
 const POLICIES = {
