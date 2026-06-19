@@ -297,11 +297,11 @@ body.dark .toast{background:var(--navy3);}
 .login-screen.hidden{display:none!important;}
 .login-card{
   width:420px;max-width:95vw;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.1);
+  background:rgba(22,40,71,.95);
+  border:1px solid rgba(255,255,255,.12);
   border-radius:24px;padding:40px 36px;
   box-shadow:0 32px 80px rgba(0,0,0,.5);
-  backdrop-filter:blur(12px);
+  position:relative;z-index:100000;
 }
 .login-logo{display:flex;align-items:center;justify-content:center;margin-bottom:32px;}
 .login-logo img{height:48px;filter:brightness(0) invert(1);object-fit:contain;}
@@ -446,8 +446,8 @@ body.dark .app-footer{background:#0a1628;}
     <div class="login-field">
       <label>Password</label>
       <div class="pass-wrap">
-        <input type="password" id="login-pass" placeholder="••••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="eye-btn" type="button" onclick="togglePassVis()" id="eye-btn" tabindex="-1">
+        <input type="password" id="login-pass" placeholder="••••••••••••" autocomplete="current-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye-btn" type="button" id="eye-btn" tabindex="-1" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:100001;cursor:pointer;background:none;border:none;padding:4px" onclick="togglePassVis()">
           <i class="ti ti-eye" id="eye-icon"></i>
         </button>
       </div>
@@ -713,7 +713,7 @@ let fbConfig = _cfg;
 const today=()=>new Date().toISOString().slice(0,10);
 const now=()=>{const d=new Date();return d.toLocaleDateString('en-ZA')+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});};
 
-document.addEventListener('DOMContentLoaded',()=>{fillCfgForm();initFirebase(fbConfig);renderAssets();updateStats();applyTheme();});
+document.addEventListener('DOMContentLoaded',()=>{fillCfgForm();initFirebase(fbConfig);applyTheme();});
 
 function fillCfgForm(){if(!fbConfig)return;document.getElementById('cfg-apiKey').value=fbConfig.apiKey||'';document.getElementById('cfg-authDomain').value=fbConfig.authDomain||'';document.getElementById('cfg-dbUrl').value=fbConfig.databaseURL||'';document.getElementById('cfg-projectId').value=fbConfig.projectId||'';}
 
