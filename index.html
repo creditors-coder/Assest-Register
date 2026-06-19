@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>X-Corp - Asset Management</title>
+<title>X-Corp — Asset Management</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -541,7 +541,7 @@ body.dark .app-footer{background:#0a1628;}
   <div id="view-employees" class="hidden">
     <div class="toolbar">
       <div class="sbox"><i class="ti ti-search"></i><input type="text" id="emp-search" placeholder="Search employees…" oninput="renderEmployees()"></div>
-      <select class="fsel" id="emp-dept" onchange="renderEmployees()"><option value="">All Departments</option><option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option></select>
+      <select class="fsel" id="emp-dept" onchange="renderEmployees()"><option value="">All Departments</option><option>Finance</option><option>Human Resources</option><option>Goldfields</option><option>Revcore</option><option>Sales (BG)</option><option>Sales (REP)</option><option>Technical</option><option>Internal Sales</option><option>Head Office</option></select>
       <button class="btn primary" style="margin-left:auto" onclick="editingEmpKey=null;document.getElementById('modal-title-emp').textContent='Add Employee';document.getElementById('modal-save-emp').textContent='Save Employee';openModal('modal-add-emp')"><i class="ti ti-plus"></i> Add Employee</button>
     </div>
     <div class="emp-grid" id="emp-grid"></div>
@@ -680,7 +680,7 @@ body.dark .app-footer{background:#0a1628;}
       </div>
       <div class="frow">
         <div class="field"><label>Employee ID *</label><input type="text" id="f-empid" placeholder="e.g. EMP-005"></div>
-        <div class="field"><label>Department</label><select id="f-edept"><option>IT</option><option>Sales</option><option>Finance</option><option>Operations</option><option>Management</option><option>Support</option><option>Telecoms</option><option>Printing</option><option>Connectivity</option></select></div>
+        <div class="field"><label>Department</label><select id="f-edept"><option>Finance</option><option>Human Resources</option><option>Goldfields</option><option>Revcore</option><option>Sales (BG)</option><option>Sales (REP)</option><option>Technical</option><option>Internal Sales</option><option>Head Office</option></select></div>
       </div>
       <div class="field"><label>Email</label><input type="email" id="f-email" placeholder="name@x-corp.co.za"></div>
     </div>
@@ -695,6 +695,7 @@ body.dark .app-footer{background:#0a1628;}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
 <script>
 let assets={},employees={},historyLog={};
 let db=null,assetsRef=null,empRef=null,histRef=null;
@@ -1028,73 +1029,18 @@ function toggleTheme(){
 }
 
 // ── AUTH ──
-const ADMIN_EMAIL = 'creditors@almestar.co.za';
-const VIEW_EMAIL  = 'accounts01@almestar.co.za';
-const ADMIN_HASH  = '0f78c0054fa09c53d7d0ad4a7dc161bb908bd1ac7699dd1cbb21b2f4fac51355';
-const VIEW_HASH   = 'fd9c653f918daa65b813f2443254bc43aec0f4f925ad91f799fc7227bf6fed01';
-
-let currentRole = null; // 'admin' or 'view'
-
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 
 
 
-function showApp() {
-  document.getElementById('login-screen').classList.add('hidden');
-  if (currentRole === 'view') {
-    document.getElementById('view-only-bar').classList.add('show');
-    lockViewOnly();
-  }
-}
 
-function lockViewOnly() {
-  // Hide all add/edit/delete buttons
-  const style = document.createElement('style');
-  style.textContent = `
-    .btn.primary, .btn.soft-red, .act.e, .act.d,
-    #modal-add-asset, #modal-add-emp, #modal-edit-serial { display: none !important; }
-    tbody tr:hover td { cursor: default !important; }
-  `;
-  document.head.appendChild(style);
-  // Hide issue/return tab
-  const issueTab = document.getElementById('tab-issue');
-  if (issueTab) issueTab.style.display = 'none';
-  // Hide setup tab
-  const configTab = document.getElementById('tab-config');
-  if (configTab) configTab.style.display = 'none';
-  // Override renderRecs to hide warranty/danger warnings for view-only
-  window._origRenderRecs = window.renderRecs;
-  window.renderRecs = function() {
-    const list = assetList();
-    const wrap = document.getElementById('rec-wrap');
-    if (!wrap) return;
-    if (!list.length) { wrap.innerHTML = ''; return; }
-    const recs = [];
-    const noSerial = list.filter(a => !a.serial);
-    const maint = list.filter(a => a.status === 'Maintenance');
-    if (noSerial.length) recs.push({cls:'info', icon:'🔖', msg:`${noSerial.length} asset${noSerial.length>1?'s':''} missing a serial number`});
-    if (maint.length) recs.push({cls:'warn', icon:'🔧', msg:`${maint.length} asset${maint.length>1?'s':''} currently in maintenance`});
-    if (!recs.length) recs.push({cls:'ok', icon:'✅', msg:'All assets are in good standing'});
-    wrap.innerHTML = recs.map(r => `<div class="rec-card ${r.cls}"><span class="rec-icon">${r.icon}</span><span>${r.msg}</span></div>`).join('');
-  };
-}
 
-function doLogout() {
-  if (!confirm('Sign out of X-Corp Asset Manager?')) return;
-  sessionStorage.removeItem('xcorp_role');
-  sessionStorage.removeItem('xcorp_email');
-  currentRole = null;
-  document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('view-only-bar').classList.remove('show');
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-pass').value = '';
-  document.getElementById('login-error').classList.remove('show');
-  // Reload to fully reset view
-  location.reload();
-}
+
+
+
+
+
+
+
 
 
 
@@ -1136,75 +1082,14 @@ function startSession() {
 }
 
 // Account lockout
-let failedAttempts = 0;
-let lockoutUntil = 0;
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 30; // seconds
 
-function togglePassVis() {
-  const inp = document.getElementById('login-pass');
-  const icon = document.getElementById('eye-icon');
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    icon.className = 'ti ti-eye-off';
-  } else {
-    inp.type = 'password';
-    icon.className = 'ti ti-eye';
-  }
+
+
+
+
 }
 
-async function doLogin() {
-  const now = Date.now();
-  if (lockoutUntil && now < lockoutUntil) {
-    const remaining = Math.ceil((lockoutUntil - now) / 1000);
-    document.getElementById('lockout-timer').textContent = remaining;
-    document.getElementById('login-lockout').classList.add('show');
-    return;
-  }
-  if (lockoutUntil && now >= lockoutUntil) {
-    lockoutUntil = 0; failedAttempts = 0;
-    document.getElementById('login-lockout').classList.remove('show');
-  }
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const pass  = document.getElementById('login-pass').value;
-  const err   = document.getElementById('login-error');
-  err.classList.remove('show');
-  if (!email || !pass) { err.textContent='Please enter your email and password.'; err.classList.add('show'); return; }
-  const hash = await sha256(pass);
-  if (email === ADMIN_EMAIL && hash === ADMIN_HASH) {
-    failedAttempts = 0; currentRole = 'admin';
-    sessionStorage.setItem('xcorp_role','admin');
-    sessionStorage.setItem('xcorp_email', email);
-    sessionStorage.setItem('xcorp_login_time', Date.now().toString());
-    showApp(); startSession();
-  } else if (email === VIEW_EMAIL && hash === VIEW_HASH) {
-    failedAttempts = 0; currentRole = 'view';
-    sessionStorage.setItem('xcorp_role','view');
-    sessionStorage.setItem('xcorp_email', email);
-    sessionStorage.setItem('xcorp_login_time', Date.now().toString());
-    showApp(); startSession();
-  } else {
-    failedAttempts++;
-    if (failedAttempts >= MAX_ATTEMPTS) {
-      lockoutUntil = Date.now() + LOCKOUT_DURATION * 1000;
-      document.getElementById('lockout-timer').textContent = LOCKOUT_DURATION;
-      document.getElementById('login-lockout').classList.add('show');
-      err.classList.remove('show');
-      let t = LOCKOUT_DURATION;
-      const lt = setInterval(() => {
-        t--;
-        const el = document.getElementById('lockout-timer');
-        if(el) el.textContent = t;
-        if(t <= 0) { clearInterval(lt); document.getElementById('login-lockout').classList.remove('show'); failedAttempts=0; }
-      }, 1000);
-    } else {
-      const remaining = MAX_ATTEMPTS - failedAttempts;
-      err.textContent = `Incorrect email or password. ${remaining} attempt${remaining!==1?'s':''} remaining before lockout.`;
-      err.classList.add('show');
-    }
-    document.getElementById('login-pass').value = '';
-  }
-}
+
 
 
 
@@ -1349,20 +1234,273 @@ function closePolicy() {
   document.body.style.overflow = '';
 }
 
-// Restore session with timeout check
-(function checkSession() {
-  const role = sessionStorage.getItem('xcorp_role');
-  const loginTime = parseInt(sessionStorage.getItem('xcorp_login_time') || '0');
-  const elapsed = Date.now() - loginTime;
-  if ((role === 'admin' || role === 'view') && elapsed < SESSION_DURATION) {
-    currentRole = role;
-    showApp();
-    if (role === 'view') lockViewOnly();
-    startSession();
-  } else {
-    sessionStorage.clear();
+
+
+
+// ══════════════════════════════════════════════
+// FIREBASE AUTHENTICATION SYSTEM
+// ══════════════════════════════════════════════
+
+const ADMIN_EMAIL = 'creditors@almestar.co.za';
+const VIEW_EMAIL  = 'accounts01@almestar.co.za';
+
+let currentRole = null;
+let failedAttempts = 0;
+let lockoutUntil = 0;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECS = 30;
+
+// ── Session timeout ──
+const SESSION_MS = 30 * 60 * 1000;
+const WARN_MS    = 2  * 60 * 1000;
+let sessionTimer, warnTimer, countdownInterval;
+
+function resetSession() {
+  clearTimeout(sessionTimer); clearTimeout(warnTimer); clearInterval(countdownInterval);
+  document.getElementById('session-warning').classList.remove('show');
+  if (currentRole) startSession();
+}
+
+function startSession() {
+  clearTimeout(sessionTimer); clearTimeout(warnTimer); clearInterval(countdownInterval);
+  warnTimer = setTimeout(() => {
+    let secs = 120;
+    document.getElementById('session-warning').classList.add('show');
+    countdownInterval = setInterval(() => {
+      secs--;
+      const el = document.getElementById('session-countdown');
+      if (el) el.textContent = Math.floor(secs/60)+':'+(secs%60<10?'0':'')+secs%60;
+      if (secs <= 0) { clearInterval(countdownInterval); doLogout(); }
+    }, 1000);
+  }, SESSION_MS - WARN_MS);
+  sessionTimer = setTimeout(doLogout, SESSION_MS);
+  ['click','keydown','mousemove','touchstart'].forEach(ev =>
+    document.addEventListener(ev, resetSession, {once:true, passive:true})
+  );
+}
+
+// ── Password visibility toggle ──
+function togglePassVis() {
+  const inp = document.getElementById('login-pass');
+  const icon = document.getElementById('eye-icon');
+  if (inp.type === 'password') { inp.type = 'text'; icon.className = 'ti ti-eye-off'; }
+  else { inp.type = 'password'; icon.className = 'ti ti-eye'; }
+}
+
+// ── Login ──
+function doLogin() {
+  const now = Date.now();
+  // Check lockout
+  if (lockoutUntil && now < lockoutUntil) {
+    const rem = Math.ceil((lockoutUntil - now) / 1000);
+    document.getElementById('lockout-timer').textContent = rem;
+    document.getElementById('login-lockout').classList.add('show');
+    return;
   }
-})();
+  if (lockoutUntil && now >= lockoutUntil) {
+    lockoutUntil = 0; failedAttempts = 0;
+    document.getElementById('login-lockout').classList.remove('show');
+  }
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-error');
+  err.classList.remove('show');
+  if (!email || !pass) { err.textContent = 'Please enter your email and password.'; err.classList.add('show'); return; }
+
+  // Validate email is one of the two allowed users
+  if (email !== ADMIN_EMAIL && email !== VIEW_EMAIL) {
+    handleFailedLogin(err); return;
+  }
+
+  // Show loading state
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+
+  // Firebase Authentication sign in
+  firebase.auth().signInWithEmailAndPassword(email, pass)
+    .then(userCredential => {
+      const user = userCredential.user;
+      failedAttempts = 0;
+      currentRole = (user.email === ADMIN_EMAIL) ? 'admin' : 'view';
+      showApp();
+      startSession();
+    })
+    .catch(error => {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      handleFailedLogin(err);
+    });
+}
+
+function handleFailedLogin(errEl) {
+  failedAttempts++;
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Sign In'; btn.disabled = false;
+  document.getElementById('login-pass').value = '';
+  if (failedAttempts >= MAX_ATTEMPTS) {
+    lockoutUntil = Date.now() + LOCKOUT_SECS * 1000;
+    document.getElementById('login-lockout').classList.add('show');
+    errEl.classList.remove('show');
+    let t = LOCKOUT_SECS;
+    const lt = setInterval(() => {
+      t--;
+      const el = document.getElementById('lockout-timer');
+      if (el) el.textContent = t;
+      if (t <= 0) { clearInterval(lt); document.getElementById('login-lockout').classList.remove('show'); failedAttempts = 0; }
+    }, 1000);
+  } else {
+    const rem = MAX_ATTEMPTS - failedAttempts;
+    errEl.textContent = `Incorrect email or password. ${rem} attempt${rem!==1?'s':''} remaining.`;
+    errEl.classList.add('show');
+  }
+}
+
+// ── Show app after login ──
+function showApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-footer').style.display = 'flex';
+  if (currentRole === 'view') {
+    document.getElementById('view-only-bar').classList.add('show');
+    lockViewOnly();
+  }
+}
+
+// ── Lock view-only user ──
+function lockViewOnly() {
+  const style = document.createElement('style');
+  style.textContent = `.btn.primary,.btn.soft-red,.act.e,.act.d,#modal-add-asset,#modal-add-emp,#modal-edit-serial{display:none!important;}tbody tr:hover td{cursor:default!important;}`;
+  document.head.appendChild(style);
+  const issueTab = document.getElementById('tab-issue');
+  if (issueTab) issueTab.style.display = 'none';
+  const configTab = document.getElementById('tab-config');
+  if (configTab) configTab.style.display = 'none';
+  window.renderRecs = function() {
+    const list = assetList(), wrap = document.getElementById('rec-wrap');
+    if (!wrap) return;
+    if (!list.length) { wrap.innerHTML = ''; return; }
+    const recs = [];
+    const noSerial = list.filter(a => !a.serial);
+    const maint = list.filter(a => a.status === 'Maintenance');
+    if (noSerial.length) recs.push({cls:'info', icon:'🔖', msg:`${noSerial.length} asset${noSerial.length>1?'s':''} missing a serial number`});
+    if (maint.length) recs.push({cls:'warn', icon:'🔧', msg:`${maint.length} asset${maint.length>1?'s':''} currently in maintenance`});
+    if (!recs.length) recs.push({cls:'ok', icon:'✅', msg:'All assets are in good standing'});
+    wrap.innerHTML = recs.map(r => `<div class="rec-card ${r.cls}"><span class="rec-icon">${r.icon}</span><span>${r.msg}</span></div>`).join('');
+  };
+}
+
+// ── Sign out ──
+function doLogout() {
+  firebase.auth().signOut().then(() => {
+    currentRole = null;
+    clearTimeout(sessionTimer); clearTimeout(warnTimer); clearInterval(countdownInterval);
+    document.getElementById('session-warning').classList.remove('show');
+    document.getElementById('view-only-bar').classList.remove('show');
+    document.getElementById('app-footer').style.display = 'none';
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-error').classList.remove('show');
+    document.getElementById('login-lockout').classList.remove('show');
+  });
+}
+
+// ── Firebase Auth state listener — auto restore session ──
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    currentRole = (user.email === ADMIN_EMAIL) ? 'admin' : 'view';
+    showApp();
+    startSession();
+  }
+  // else stay on login screen
+});
+
+// ── Policy modals ──
+const POLICIES = {
+  privacy: {
+    title: 'Privacy Policy',
+    body: `
+      <div class="highlight">Last updated: June 2024 · X-Corp Business Solutions (Pty) Ltd</div>
+      <h3>1. Introduction</h3>
+      <p>X-Corp Business Solutions (Pty) Ltd is committed to protecting the privacy and personal information of all individuals whose data is processed through this Asset Management System.</p>
+      <h3>2. Information We Collect</h3>
+      <ul><li>Employee full names and employee IDs</li><li>Company email addresses</li><li>Asset assignment records and history</li><li>System access logs</li></ul>
+      <h3>3. Purpose of Collection</h3>
+      <ul><li>Tracking and managing company IT assets</li><li>Maintaining accountability for asset assignments</li><li>Generating audit trails for compliance</li></ul>
+      <h3>4. Legal Basis</h3>
+      <p>Processing is carried out in accordance with the Protection of Personal Information Act 4 of 2013 (POPIA).</p>
+      <h3>5. Data Retention</h3>
+      <p>Asset records are retained for employment duration plus 5 years. History logs are retained for 3 years.</p>
+      <h3>6. Data Security</h3>
+      <p>All data is stored securely using Google Firebase with encrypted connections (HTTPS). Access is restricted by Firebase Authentication. Passwords are managed by Google's secure authentication servers.</p>
+      <h3>7. Your Rights (POPIA)</h3>
+      <ul><li>Request access to your personal information</li><li>Request correction of inaccurate information</li><li>Object to the processing of your information</li><li>Lodge a complaint with the Information Regulator</li></ul>
+      <h3>8. Contact</h3>
+      <p>For privacy enquiries: <strong>creditors@almestar.co.za</strong> · <strong>www.x-corp.co.za</strong></p>
+    `
+  },
+  popia: {
+    title: 'POPIA Compliance Notice',
+    body: `
+      <div class="highlight">Protection of Personal Information Act 4 of 2013 — Section 18 Notice</div>
+      <h3>Responsible Party</h3>
+      <p><strong>X-Corp Business Solutions (Pty) Ltd</strong><br>Website: www.x-corp.co.za<br>Email: creditors@almestar.co.za</p>
+      <h3>Information Officer</h3>
+      <p>Contact: <strong>creditors@almestar.co.za</strong></p>
+      <h3>Personal Information Processed</h3>
+      <ul><li>Employee names and identification numbers</li><li>Corporate email addresses</li><li>Asset assignment and usage history</li></ul>
+      <h3>Purpose</h3>
+      <p>Internal IT asset management, accountability tracking, and audit compliance.</p>
+      <h3>Security</h3>
+      <p>Data is protected by Google Firebase Authentication and Realtime Database security rules. Only authenticated users can access data.</p>
+      <h3>Your Rights</h3>
+      <p>Submit written requests to <strong>creditors@almestar.co.za</strong>. We respond within 30 days.</p>
+      <h3>Information Regulator</h3>
+      <p>www.justice.gov.za/inforeg · inforeg@justice.gov.za</p>
+    `
+  },
+  terms: {
+    title: 'Terms of Use',
+    body: `
+      <div class="highlight">X-Corp Business Solutions — Asset Management System · Internal Use Only</div>
+      <h3>1. Authorised Use</h3>
+      <p>This system is for exclusive use of authorised X-Corp Business Solutions employees. Access credentials must not be shared.</p>
+      <h3>2. Permitted Activities</h3>
+      <ul><li>Viewing and managing company IT assets within your assigned role</li><li>Issuing and returning assets as authorised</li><li>Exporting reports for internal business purposes</li></ul>
+      <h3>3. Prohibited Activities</h3>
+      <ul><li>Sharing login credentials</li><li>Attempting to access functions beyond your role</li><li>Entering false or misleading information</li><li>Attempting to bypass security controls</li></ul>
+      <h3>4. Session Security</h3>
+      <p>Sessions automatically expire after 30 minutes of inactivity. Users must sign out when leaving their workstation.</p>
+      <h3>5. Monitoring</h3>
+      <p>All actions are logged. X-Corp reserves the right to audit usage logs at any time.</p>
+      <h3>6. Governing Law</h3>
+      <p>These terms are governed by the laws of the Republic of South Africa.</p>
+    `
+  },
+  contact: {
+    title: 'Contact Us',
+    body: `
+      <h3>X-Corp Business Solutions (Pty) Ltd</h3>
+      <div class="highlight"><strong>Information Officer</strong><br>Email: creditors@almestar.co.za<br>Website: www.x-corp.co.za</div>
+      <h3>System Support</h3>
+      <p>For technical issues contact: <strong>creditors@almestar.co.za</strong></p>
+      <h3>POPIA / Privacy Requests</h3>
+      <p>Send written requests to <strong>creditors@almestar.co.za</strong>. We respond within 30 business days.</p>
+      <h3>Information Regulator of South Africa</h3>
+      <ul><li>Website: www.justice.gov.za/inforeg</li><li>Email: inforeg@justice.gov.za</li><li>Tel: 012 406 4818</li></ul>
+    `
+  }
+};
+
+function openPolicy(type) {
+  const p = POLICIES[type]; if (!p) return;
+  document.getElementById('policy-title').textContent = p.title;
+  document.getElementById('policy-body').innerHTML = p.body;
+  document.getElementById('policy-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePolicy() {
+  document.getElementById('policy-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.moverlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
