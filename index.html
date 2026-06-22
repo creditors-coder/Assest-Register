@@ -733,7 +733,7 @@ function initFirebase(cfg){
     // Auth state listener - runs when user logs in or session restores
     firebase.auth().onAuthStateChanged(user => {
       if(user){
-        currentRole=(user.email===ADMIN_EMAIL)?'admin':'view';
+        currentRole=((user.email||'').toLowerCase()===ADMIN_EMAIL)?'admin':'view';
         // Only attach DB listeners after auth confirmed
         assetsRef.on('value',snap=>{assets=snap.val()||{};updateStats();renderAssets();renderSerials();populateIssueSelects();});
         empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();});
@@ -1301,11 +1301,10 @@ function togglePassVis() {
 
 // ── Login ──
 function doLogin() {
+  // Lockout check
   const now = Date.now();
-  // Check lockout
   if (lockoutUntil && now < lockoutUntil) {
-    const rem = Math.ceil((lockoutUntil - now) / 1000);
-    document.getElementById('lockout-timer').textContent = rem;
+    document.getElementById('lockout-timer').textContent = Math.ceil((lockoutUntil - now)/1000);
     document.getElementById('login-lockout').classList.add('show');
     return;
   }
@@ -1313,57 +1312,48 @@ function doLogin() {
     lockoutUntil = 0; failedAttempts = 0;
     document.getElementById('login-lockout').classList.remove('show');
   }
+
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-error');
   err.classList.remove('show');
-  if (!email || !pass) { err.textContent = 'Please enter your email and password.'; err.classList.add('show'); return; }
 
-  // Validate email is one of the two allowed users
-  if (email !== ADMIN_EMAIL && email !== VIEW_EMAIL) {
-    handleFailedLogin(err); return;
+  if (!email || !pass) {
+    err.textContent = 'Please enter your email and password.';
+    err.classList.add('show');
+    return;
   }
 
-  // Show loading state
-  const btn = document.querySelector('.login-btn') || {textContent:'',disabled:false};
-  btn.textContent = 'Signing in…'; btn.disabled = true;
+  const btn = document.querySelector('.login-btn');
+  if (btn) { btn.textContent = 'Signing in…'; btn.disabled = true; }
 
-  // Firebase Authentication sign in
+  // Sign in via Firebase Auth - onAuthStateChanged handles the rest
   firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then(userCredential => {
-      const user = userCredential.user;
+    .then(() => {
       failedAttempts = 0;
-      currentRole = (user.email === ADMIN_EMAIL) ? 'admin' : 'view';
-      showApp();
-      startSession();
+      if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
     })
-    .catch(error => {
-      btn.textContent = 'Sign In'; btn.disabled = false;
-      handleFailedLogin(err);
+    .catch((e) => {
+      console.error('Login error:', e.code, e.message);
+      if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+      failedAttempts++;
+      if (failedAttempts >= MAX_ATTEMPTS) {
+        lockoutUntil = Date.now() + LOCKOUT_SECS * 1000;
+        document.getElementById('login-lockout').classList.add('show');
+        let t = LOCKOUT_SECS;
+        const lt = setInterval(() => {
+          t--;
+          const el = document.getElementById('lockout-timer');
+          if (el) el.textContent = t;
+          if (t <= 0) { clearInterval(lt); document.getElementById('login-lockout').classList.remove('show'); failedAttempts = 0; lockoutUntil = 0; }
+        }, 1000);
+      } else {
+        const rem = MAX_ATTEMPTS - failedAttempts;
+        err.textContent = 'Incorrect email or password. ' + rem + ' attempt' + (rem!==1?'s':'') + ' remaining.';
+        err.classList.add('show');
+        document.getElementById('login-pass').value = '';
+      }
     });
-}
-
-function handleFailedLogin(errEl) {
-  failedAttempts++;
-  const btn = document.querySelector('.login-btn') || {textContent:'',disabled:false};
-  btn.textContent = 'Sign In'; btn.disabled = false;
-  document.getElementById('login-pass').value = '';
-  if (failedAttempts >= MAX_ATTEMPTS) {
-    lockoutUntil = Date.now() + LOCKOUT_SECS * 1000;
-    document.getElementById('login-lockout').classList.add('show');
-    errEl.classList.remove('show');
-    let t = LOCKOUT_SECS;
-    const lt = setInterval(() => {
-      t--;
-      const el = document.getElementById('lockout-timer');
-      if (el) el.textContent = t;
-      if (t <= 0) { clearInterval(lt); document.getElementById('login-lockout').classList.remove('show'); failedAttempts = 0; }
-    }, 1000);
-  } else {
-    const rem = MAX_ATTEMPTS - failedAttempts;
-    errEl.textContent = `Incorrect email or password. ${rem} attempt${rem!==1?'s':''} remaining.`;
-    errEl.classList.add('show');
-  }
 }
 
 // ── Show app after login ──
