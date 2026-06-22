@@ -1071,7 +1071,7 @@ function toggleTheme(){
 // ══════════════════════════════════════════════
 
 const ADMIN_EMAIL = 'creditors@almestar.co.za';
-const VIEW_EMAIL  = 'accountso1@almestar.co.za'; // matches Firebase exactly
+const VIEW_EMAIL  = 'accounts01@almestar.co.za';
 
 let currentRole = null;
 let failedAttempts = 0;
@@ -1130,7 +1130,7 @@ function doLogin() {
     document.getElementById('login-lockout').classList.remove('show');
   }
 
-  const email = document.getElementById('login-email').value.trim(); // keep original case for Firebase
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-error');
   err.classList.remove('show');
