@@ -733,7 +733,16 @@ function initFirebase(cfg){
     // Auth state listener - runs when user logs in or session restores
     firebase.auth().onAuthStateChanged(user => {
       if(user){
-        currentRole=((user.email||'').toLowerCase()===ADMIN_EMAIL)?'admin':'view';
+        const userEmail = (user.email||'').toLowerCase();
+        if(userEmail === ADMIN_EMAIL.toLowerCase()) {
+          currentRole = 'admin';
+        } else if(userEmail === VIEW_EMAIL.toLowerCase()) {
+          currentRole = 'view';
+        } else {
+          // Unknown user - sign out
+          firebase.auth().signOut();
+          return;
+        }
         // Only attach DB listeners after auth confirmed
         assetsRef.on('value',snap=>{assets=snap.val()||{};updateStats();renderAssets();renderSerials();populateIssueSelects();});
         empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();});
@@ -1062,7 +1071,7 @@ function toggleTheme(){
 // ══════════════════════════════════════════════
 
 const ADMIN_EMAIL = 'creditors@almestar.co.za';
-const VIEW_EMAIL  = 'accounts01@almestar.co.za';
+const VIEW_EMAIL  = 'accountso1@almestar.co.za'; // matches Firebase exactly
 
 let currentRole = null;
 let failedAttempts = 0;
@@ -1121,7 +1130,7 @@ function doLogin() {
     document.getElementById('login-lockout').classList.remove('show');
   }
 
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const email = document.getElementById('login-email').value.trim(); // keep original case for Firebase
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-error');
   err.classList.remove('show');
