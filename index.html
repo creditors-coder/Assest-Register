@@ -426,6 +426,17 @@ body.dark .app-footer{background:#0a1628;}
 .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,.35);font-size:16px;padding:4px;transition:color .15s;display:flex;align-items:center;z-index:100000;}
 .eye-btn:hover{color:rgba(255,255,255,.7);}
 
+
+/* View only mode - controlled by body class */
+body.view-only-mode .btn.primary,
+body.view-only-mode .btn.soft-red,
+body.view-only-mode .act.e,
+body.view-only-mode .act.d,
+body.view-only-mode #modal-add-asset,
+body.view-only-mode #modal-add-emp,
+body.view-only-mode #modal-edit-serial { display: none !important; }
+body.view-only-mode tbody tr:hover td { cursor: default !important; }
+
 </style>
 </head>
 <body>
@@ -737,8 +748,10 @@ function initFirebase(cfg){
         const userEmail = (user.email||'').toLowerCase();
         if(userEmail === ADMIN_EMAIL.toLowerCase()) {
           currentRole = 'admin';
+          sessionStorage.setItem('xcorp_role','admin');
         } else if(userEmail === VIEW_EMAIL.toLowerCase()) {
           currentRole = 'view';
+          sessionStorage.setItem('xcorp_role','view');
         } else {
           // Unknown user - sign out
           firebase.auth().signOut();
@@ -1209,34 +1222,19 @@ function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-footer').style.display = 'flex';
   document.body.style.overflow = '';
+  // Always reset first
+  document.body.classList.remove('view-only-mode');
+  document.getElementById('view-only-bar').classList.remove('show');
   if (currentRole === 'view') {
     document.getElementById('view-only-bar').classList.add('show');
     lockViewOnly();
-  } else if (currentRole === 'admin') {
-    // Make absolutely sure admin has full access
-    document.getElementById('view-only-bar').classList.remove('show');
-    // Remove any lingering view-only styles
-    document.querySelectorAll('style').forEach(s => {
-      if (s.textContent && s.textContent.includes('btn.primary') && s.textContent.includes('display:none')) {
-        s.remove();
-      }
-    });
-    // Restore all hidden elements
-    const hidden = document.querySelectorAll('.btn.primary, .btn.soft-red, .act.e, .act.d');
-    hidden.forEach(el => el.style.removeProperty('display'));
-    // Make sure add buttons are visible
-    const addAssetBtn = document.querySelector('[onclick*="modal-add-asset"]');
-    const addEmpBtn = document.querySelector('[onclick*="modal-add-emp"]');
-    if (addAssetBtn) addAssetBtn.style.display = '';
-    if (addEmpBtn) addEmpBtn.style.display = '';
   }
+  // Admin gets full access - no restrictions
 }
 
 // ── Lock view-only user ──
 function lockViewOnly() {
-  const style = document.createElement('style');
-  style.textContent = `.btn.primary,.btn.soft-red,.act.e,.act.d,#modal-add-asset,#modal-add-emp,#modal-edit-serial{display:none!important;}tbody tr:hover td{cursor:default!important;}`;
-  document.head.appendChild(style);
+  document.body.classList.add('view-only-mode');
   const issueTab = document.getElementById('tab-issue');
   if (issueTab) issueTab.style.display = 'none';
   const configTab = document.getElementById('tab-config');
@@ -1257,8 +1255,9 @@ function lockViewOnly() {
 
 // ── Sign out ──
 function doLogout() {
+  if (!confirm('Sign out of X-Corp Asset Manager?')) return;
+  sessionStorage.removeItem('xcorp_role');
   firebase.auth().signOut().then(() => {
-    // Reload page completely to clear all cached state and styles
     window.location.reload();
   });
 }
