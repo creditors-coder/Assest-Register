@@ -24,7 +24,8 @@
   --sh2:0 8px 32px rgba(13,31,60,.12);
   --sh3:0 20px 60px rgba(13,31,60,.18);
 }
-body{font-family:'Inter',sans-serif;color:var(--text);background:var(--surface2);min-height:100vh;font-size:14px;line-height:1.5;}
+html{height:100%;}
+body{font-family:'Inter',sans-serif;color:var(--text);background:var(--surface2);min-height:100vh;font-size:14px;line-height:1.5;overflow-y:auto;}
 
 /* HEADER */
 .header{
@@ -60,7 +61,7 @@ body{font-family:'Inter',sans-serif;color:var(--text);background:var(--surface2)
 .nav-tab.active{color:#fff;border-bottom-color:var(--red2);}
 
 /* PAGE */
-.page{padding:28px 32px;max-width:1440px;margin:0 auto;}
+.page{padding:28px 32px 80px 32px;max-width:1440px;margin:0 auto;}
 
 /* RECOMMENDATIONS */
 .recs{margin-bottom:22px;display:flex;flex-direction:column;gap:8px;}
@@ -495,7 +496,7 @@ body.dark .app-footer{background:#0a1628;}
   <button class="nav-tab" id="tab-employees" onclick="switchTab('employees')"><i class="ti ti-users"></i> Employees</button>
   <button class="nav-tab" id="tab-issue" onclick="switchTab('issue')"><i class="ti ti-arrows-exchange"></i> Issue / Return</button>
   <button class="nav-tab" id="tab-history" onclick="switchTab('history')"><i class="ti ti-history"></i> History</button>
-  <button class="nav-tab" id="tab-config" onclick="switchTab('config')"><i class="ti ti-settings"></i> Setup</button>
+  <!-- Setup tab hidden - Firebase configured -->
 </div>
 
 <div class="page">
@@ -1145,14 +1146,44 @@ function doLogin() {
   if (btn) { btn.textContent = 'Signing in…'; btn.disabled = true; }
 
   // Sign in via Firebase Auth - onAuthStateChanged handles the rest
+  // Timeout in case Firebase doesn't respond (e.g. API key restriction issue)
+  const loginTimeout = setTimeout(() => {
+    if (btn && btn.disabled) {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = 'Connection timed out. Please check your internet and try again.';
+      errEl.classList.add('show');
+    }
+  }, 10000);
+  
   firebase.auth().signInWithEmailAndPassword(email, pass)
     .then(() => {
+      clearTimeout(loginTimeout);
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
     })
     .catch((e) => {
+      clearTimeout(loginTimeout);
       console.error('Login error:', e.code, e.message);
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+      // Show specific error on screen including error code for debugging  
+      const errEl = document.getElementById('login-error');
+      document.getElementById('login-pass').value = '';
+      if (e.code === 'auth/network-request-failed') {
+        errEl.textContent = 'Network error — check your internet connection.';
+        errEl.classList.add('show');
+        return;
+      }
+      if (e.code === 'auth/too-many-requests') {
+        errEl.textContent = 'Too many attempts. Please wait a few minutes.';
+        errEl.classList.add('show');
+        return;
+      }
+      if (e.code === 'auth/api-key-not-valid' || e.code === 'auth/invalid-api-key') {
+        errEl.textContent = 'System configuration error. Please contact admin.';
+        errEl.classList.add('show');
+        return;
+      }
       failedAttempts++;
       if (failedAttempts >= MAX_ATTEMPTS) {
         lockoutUntil = Date.now() + LOCKOUT_SECS * 1000;
@@ -1177,9 +1208,27 @@ function doLogin() {
 function showApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-footer').style.display = 'flex';
+  document.body.style.overflow = '';
   if (currentRole === 'view') {
     document.getElementById('view-only-bar').classList.add('show');
     lockViewOnly();
+  } else if (currentRole === 'admin') {
+    // Make absolutely sure admin has full access
+    document.getElementById('view-only-bar').classList.remove('show');
+    // Remove any lingering view-only styles
+    document.querySelectorAll('style').forEach(s => {
+      if (s.textContent && s.textContent.includes('btn.primary') && s.textContent.includes('display:none')) {
+        s.remove();
+      }
+    });
+    // Restore all hidden elements
+    const hidden = document.querySelectorAll('.btn.primary, .btn.soft-red, .act.e, .act.d');
+    hidden.forEach(el => el.style.removeProperty('display'));
+    // Make sure add buttons are visible
+    const addAssetBtn = document.querySelector('[onclick*="modal-add-asset"]');
+    const addEmpBtn = document.querySelector('[onclick*="modal-add-emp"]');
+    if (addAssetBtn) addAssetBtn.style.display = '';
+    if (addEmpBtn) addEmpBtn.style.display = '';
   }
 }
 
@@ -1209,16 +1258,8 @@ function lockViewOnly() {
 // ── Sign out ──
 function doLogout() {
   firebase.auth().signOut().then(() => {
-    currentRole = null;
-    clearTimeout(sessionTimer); clearTimeout(warnTimer); clearInterval(countdownInterval);
-    document.getElementById('session-warning').classList.remove('show');
-    document.getElementById('view-only-bar').classList.remove('show');
-    document.getElementById('app-footer').style.display = 'none';
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('login-email').value = '';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-error').classList.remove('show');
-    document.getElementById('login-lockout').classList.remove('show');
+    // Reload page completely to clear all cached state and styles
+    window.location.reload();
   });
 }
 
