@@ -78,7 +78,7 @@ body{font-family:'Inter',sans-serif;color:var(--text);background:var(--surface2)
 .rec-action{margin-left:auto;font-size:11px;font-weight:600;opacity:.7;cursor:pointer;}
 
 /* METRICS */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
 .metric{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--r16);
   padding:20px;box-shadow:var(--sh0);position:relative;overflow:hidden;
@@ -283,7 +283,7 @@ body.dark .rec-card.info{background:#0f1e38;border-color:#1e3a8a;color:#60a5fa;}
 body.dark .toast{background:var(--navy3);}
 
 @media print{.header,.nav,.toolbar,.act,.btn,.recs{display:none!important;}.card{box-shadow:none;}body{background:#fff;}}
-@media(max-width:1024px){.metrics{grid-template-columns:repeat(2,1fr)}.header-stats{display:none}}
+@media(max-width:1024px){.metrics{grid-template-columns:repeat(3,1fr)}.header-stats{display:none}}
 @media(max-width:768px){.two-col{grid-template-columns:1fr}.page{padding:16px}.frow{grid-template-columns:1fr}}
 @media(max-width:480px){.metrics{grid-template-columns:1fr}}
 .hidden{display:none!important;}
@@ -437,6 +437,11 @@ body.view-only-mode #modal-add-emp,
 body.view-only-mode #modal-edit-serial { display: none !important; }
 body.view-only-mode tbody tr:hover td { cursor: default !important; }
 
+
+/* Admin only elements */
+.admin-only { display: none; }
+body.admin-mode .admin-only { display: inline-flex !important; }
+
 </style>
 </head>
 <body>
@@ -507,7 +512,7 @@ body.view-only-mode tbody tr:hover td { cursor: default !important; }
   <button class="nav-tab" id="tab-employees" onclick="switchTab('employees')"><i class="ti ti-users"></i> Employees</button>
   <button class="nav-tab" id="tab-issue" onclick="switchTab('issue')"><i class="ti ti-arrows-exchange"></i> Issue / Return</button>
   <button class="nav-tab" id="tab-history" onclick="switchTab('history')"><i class="ti ti-history"></i> History</button>
-  <!-- Setup tab hidden - Firebase configured -->
+  <button class="nav-tab admin-only" id="tab-config" onclick="switchTab('config')"><i class="ti ti-settings"></i> Setup</button>
 </div>
 
 <div class="page">
@@ -519,12 +524,12 @@ body.view-only-mode tbody tr:hover td { cursor: default !important; }
       <div class="metric blue"><div class="metric-top"><div class="metric-icon"><i class="ti ti-device-laptop"></i></div></div><div class="metric-val" id="m-total">0</div><div class="metric-lbl">Total Assets</div></div>
       <div class="metric green"><div class="metric-top"><div class="metric-icon"><i class="ti ti-circle-check"></i></div></div><div class="metric-val" id="m-avail">0</div><div class="metric-lbl">Available</div></div>
       <div class="metric amber"><div class="metric-top"><div class="metric-icon"><i class="ti ti-user-check"></i></div></div><div class="metric-val" id="m-issued">0</div><div class="metric-lbl">Issued Out</div></div>
-      <div class="metric red"><div class="metric-top"><div class="metric-icon"><i class="ti ti-tool"></i></div></div><div class="metric-val" id="m-maint">0</div><div class="metric-lbl">Maintenance</div></div>
+
     </div>
     <div class="toolbar">
       <div class="sbox"><i class="ti ti-search"></i><input type="text" id="asset-search" placeholder="Search by ID, name or serial…" oninput="renderAssets()"></div>
       <select class="fsel" id="asset-cat" onchange="renderAssets()"><option value="">All Categories</option><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option></select>
-      <select class="fsel" id="asset-status" onchange="renderAssets()"><option value="">All Statuses</option><option>Available</option><option>Issued</option><option>Maintenance</option><option>Retired</option></select>
+      <select class="fsel" id="asset-status" onchange="renderAssets()"><option value="">All Statuses</option><option>Available</option><option>Issued</option><option>Retired</option></select>
       <button class="btn" onclick="exportCSV()" style="margin-left:auto"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
       <button class="btn primary" onclick="editingAssetKey=null;document.getElementById('modal-title-asset').textContent='Add New Asset';document.getElementById('modal-save-asset').textContent='Save Asset';openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
     </div>
@@ -576,7 +581,7 @@ body.view-only-mode tbody tr:hover td { cursor: default !important; }
         <div class="ipanel-hd"><div class="ipanel-ico in"><i class="ti ti-arrow-down-left"></i></div><div class="ipanel-title">Return Asset</div></div>
         <div class="fstack">
           <div class="field"><label>Select Issued Asset</label><select id="return-asset"><option value="">— choose asset —</option></select></div>
-          <div class="field"><label>Condition on Return</label><select id="return-cond"><option>Good</option><option>Damaged</option><option>Requires maintenance</option></select></div>
+          <div class="field"><label>Condition on Return</label><select id="return-cond"><option>Good</option><option>Damaged</option></select></div>
           <div class="field"><label>Notes</label><input type="text" id="return-notes" placeholder="Optional notes…"></div>
           <button class="btn navy" onclick="returnAsset()"><i class="ti ti-arrow-down-left"></i> Return Asset</button>
         </div>
@@ -652,7 +657,7 @@ body.view-only-mode tbody tr:hover td { cursor: default !important; }
       </div>
       <div class="frow">
         <div class="field"><label>Warranty Expiry</label><input type="date" id="f-warranty"></div>
-        <div class="field"><label>Status</label><select id="f-status"><option>Available</option><option>Maintenance</option><option>Retired</option></select></div>
+        <div class="field"><label>Status</label><select id="f-status"><option>Available</option><option>Retired</option></select></div>
       </div>
       <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Optional notes…"></textarea></div>
     </div>
@@ -801,11 +806,10 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
 function updateStats(){
   const list=assetList();
-  const total=list.length,issued=list.filter(a=>a.status==='Issued').length,avail=list.filter(a=>a.status==='Available').length,maint=list.filter(a=>a.status==='Maintenance').length;
+  const total=list.length,issued=list.filter(a=>a.status==='Issued').length,avail=list.filter(a=>a.status==='Available').length;
   ['m-total','h-total'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=total;});
   ['m-issued','h-issued'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=issued;});
   ['m-avail','h-available'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=avail;});
-  const mm=document.getElementById('m-maint');if(mm)mm.textContent=maint;
   renderRecs();
 }
 
@@ -816,16 +820,16 @@ function renderRecs(){
   const expiring=list.filter(a=>{if(!a.warranty)return false;const d=(new Date(a.warranty)-new Date())/86400000;return d>=0&&d<=90;});
   const expired=list.filter(a=>{if(!a.warranty)return false;return new Date(a.warranty)<new Date();});
   const noSerial=list.filter(a=>!a.serial);
-  const maint=list.filter(a=>a.status==='Maintenance');
+
   if(expired.length)recs.push({cls:'danger',icon:'🔴',msg:`${expired.length} asset${expired.length>1?'s':''} with EXPIRED warranty — action required`});
   if(expiring.length)recs.push({cls:'warn',icon:'⚠️',msg:`${expiring.length} asset${expiring.length>1?'s':''} warranty expiring within 90 days`});
   if(noSerial.length)recs.push({cls:'info',icon:'🔖',msg:`${noSerial.length} asset${noSerial.length>1?'s':''} missing a serial number — update in Serial Numbers tab`});
-  if(maint.length)recs.push({cls:'warn',icon:'🔧',msg:`${maint.length} asset${maint.length>1?'s':''} currently in maintenance`});
+
   if(!recs.length)recs.push({cls:'ok',icon:'✅',msg:'All assets are in good standing — no action required'});
   wrap.innerHTML=recs.map(r=>`<div class="rec-card ${r.cls}"><span class="rec-icon">${r.icon}</span><span>${r.msg}</span></div>`).join('');
 }
 
-function statusBadge(s){const m={Available:'bg',Issued:'ba',Maintenance:'br',Retired:'bx'};return`<span class="badge ${m[s]||'bx'}">${esc(s)}</span>`;}
+function statusBadge(s){const m={Available:'bg',Issued:'ba',Retired:'bx'};return`<span class="badge ${m[s]||'bx'}">${esc(s)}</span>`;}
 function catBadge(c){return`<span class="badge bn">${esc(c)}</span>`;}
 
 // ASSETS
@@ -1229,25 +1233,29 @@ function showApp() {
     document.getElementById('view-only-bar').classList.add('show');
     lockViewOnly();
   }
-  // Admin gets full access - no restrictions
+  // Admin gets full access
+  if (currentRole === 'admin') {
+    document.body.classList.add('admin-mode');
+  } else {
+    document.body.classList.remove('admin-mode');
+  }
 }
 
 // ── Lock view-only user ──
 function lockViewOnly() {
   document.body.classList.add('view-only-mode');
-  const issueTab = document.getElementById('tab-issue');
-  if (issueTab) issueTab.style.display = 'none';
-  const configTab = document.getElementById('tab-config');
-  if (configTab) configTab.style.display = 'none';
+  // Hide setup tab for view-only
+  document.getElementById('tab-config') && (document.getElementById('tab-config').style.display = 'none');
+  document.getElementById('tab-issue') && (document.getElementById('tab-issue').style.display = 'none');
   window.renderRecs = function() {
     const list = assetList(), wrap = document.getElementById('rec-wrap');
     if (!wrap) return;
     if (!list.length) { wrap.innerHTML = ''; return; }
     const recs = [];
     const noSerial = list.filter(a => !a.serial);
-    const maint = list.filter(a => a.status === 'Maintenance');
+
     if (noSerial.length) recs.push({cls:'info', icon:'🔖', msg:`${noSerial.length} asset${noSerial.length>1?'s':''} missing a serial number`});
-    if (maint.length) recs.push({cls:'warn', icon:'🔧', msg:`${maint.length} asset${maint.length>1?'s':''} currently in maintenance`});
+
     if (!recs.length) recs.push({cls:'ok', icon:'✅', msg:'All assets are in good standing'});
     wrap.innerHTML = recs.map(r => `<div class="rec-card ${r.cls}"><span class="rec-icon">${r.icon}</span><span>${r.msg}</span></div>`).join('');
   };
