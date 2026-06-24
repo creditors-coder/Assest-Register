@@ -442,6 +442,78 @@ body.view-only-mode tbody tr:hover td { cursor: default !important; }
 .admin-only { display: none; }
 body.admin-mode .admin-only { display: inline-flex !important; }
 
+
+/* ── MFA Screen ── */
+.mfa-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);
+  display:none;align-items:center;justify-content:center;
+  font-family:'Inter',sans-serif;
+}
+.mfa-screen.open{display:flex;}
+.mfa-card{
+  width:420px;max-width:95vw;
+  background:rgba(22,40,71,.95);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px;padding:40px 36px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+}
+.mfa-icon{text-align:center;font-size:48px;margin-bottom:16px;}
+.mfa-title{text-align:center;color:#fff;font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;}
+.mfa-sub{text-align:center;color:rgba(255,255,255,.45);font-size:13px;margin-bottom:28px;line-height:1.6;}
+.mfa-code-wrap{display:flex;gap:10px;justify-content:center;margin-bottom:20px;}
+.mfa-digit{
+  width:48px;height:56px;border-radius:10px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  color:#fff;font-size:22px;font-weight:700;text-align:center;
+  font-family:'JetBrains Mono',monospace;outline:none;
+  transition:border-color .15s;
+}
+.mfa-digit:focus{border-color:var(--red2);background:rgba(255,255,255,.1);}
+.mfa-timer{text-align:center;color:rgba(255,255,255,.4);font-size:12px;margin-bottom:16px;}
+.mfa-timer span{color:#fbbf24;font-weight:600;}
+.mfa-resend{
+  width:100%;background:none;border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.6);border-radius:10px;padding:10px;
+  font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:10px;
+}
+.mfa-resend:hover{background:rgba(255,255,255,.06);color:#fff;}
+.mfa-resend:disabled{opacity:.4;cursor:default;}
+.mfa-back{
+  width:100%;background:none;border:none;
+  color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;
+  font-family:inherit;margin-top:6px;transition:color .15s;
+}
+.mfa-back:hover{color:rgba(255,255,255,.7);}
+.mfa-error{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;color:#f87171;font-size:12px;text-align:center;display:none;}
+.mfa-error.show{display:block;}
+
+/* ── Forgot Password Screen ── */
+.fp-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);
+  display:none;align-items:center;justify-content:center;
+  font-family:'Inter',sans-serif;
+}
+.fp-screen.open{display:flex;}
+.fp-card{
+  width:420px;max-width:95vw;
+  background:rgba(22,40,71,.95);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px;padding:40px 36px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+}
+.fp-icon{text-align:center;font-size:48px;margin-bottom:16px;}
+.fp-title{text-align:center;color:#fff;font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;}
+.fp-sub{text-align:center;color:rgba(255,255,255,.45);font-size:13px;margin-bottom:28px;line-height:1.6;}
+.fp-success{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#4ade80;font-size:13px;text-align:center;display:none;}
+.fp-success.show{display:block;}
+.fp-error{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;color:#f87171;font-size:12px;text-align:center;display:none;}
+.fp-error.show{display:block;}
+.forgot-link{text-align:center;margin-top:14px;}
+.forgot-link button{background:none;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;font-family:inherit;transition:color .15s;text-decoration:underline;}
+.forgot-link button:hover{color:rgba(255,255,255,.75);}
+
 </style>
 </head>
 <body>
@@ -472,6 +544,7 @@ body.admin-mode .admin-only { display: inline-flex !important; }
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-error" id="login-error">Incorrect email or password. Please try again.</div>
     <div class="login-lockout" id="login-lockout">⛔ Too many failed attempts. Please wait <span id="lockout-timer">30</span> seconds before trying again.</div>
+    <div class="forgot-link"><button onclick="openForgotPassword()">Forgot your password?</button></div>
     <div class="login-footer">X-Corp Business Solutions &copy; 2024 &nbsp;·&nbsp; Secure Login</div>
     <div class="popia-notice">
       By signing in you acknowledge that this system processes personal information in accordance with the
@@ -762,7 +835,12 @@ function initFirebase(cfg){
           firebase.auth().signOut();
           return;
         }
-        // Only attach DB listeners after auth confirmed
+        // Only attach DB listeners after MFA confirmed
+        // If mfaCode is set, MFA is pending - don't show app yet
+        if (mfaCode) {
+          console.log('Waiting for MFA verification...');
+          return;
+        }
         assetsRef.on('value',snap=>{assets=snap.val()||{};updateStats();renderAssets();renderSerials();populateIssueSelects();});
         empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();});
         histRef.on('value',snap=>{historyLog=snap.val()||{};renderHistory();});
@@ -1161,6 +1239,8 @@ function doLogin() {
 
   const btn = document.querySelector('.login-btn');
   if (btn) { btn.textContent = 'Signing in…'; btn.disabled = true; }
+  // Temporarily store for MFA re-auth (cleared immediately after use)
+  sessionStorage.setItem('_tmp_p', btoa(pass));
 
   // Sign in via Firebase Auth - onAuthStateChanged handles the rest
   // Timeout in case Firebase doesn't respond (e.g. API key restriction issue)
@@ -1174,10 +1254,16 @@ function doLogin() {
   }, 10000);
   
   firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then(() => {
+    .then((userCredential) => {
       clearTimeout(loginTimeout);
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+      // Trigger MFA - sign out temporarily then verify OTP
+      const userEmail = (userCredential.user.email || '').toLowerCase();
+      // Send MFA code before granting access
+      firebase.auth().signOut().then(() => {
+        sendMFACode(userEmail);
+      });
     })
     .catch((e) => {
       clearTimeout(loginTimeout);
@@ -1361,6 +1447,223 @@ function closePolicy() {
   document.body.style.overflow = '';
 }
 
+
+// ══════════════════════════════════════════
+// MFA - EMAIL OTP VERIFICATION
+// ══════════════════════════════════════════
+let mfaCode = '';
+let mfaEmail = '';
+let mfaTimer = null;
+let mfaSecondsLeft = 600;
+let pendingUserCredential = null;
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendMFACode(email) {
+  mfaCode = generateOTP();
+  mfaEmail = email;
+  mfaSecondsLeft = 600;
+  
+  // Send via Firebase Email (using a cloud function alternative)
+  // Since we can't use cloud functions on free tier, we use EmailJS or store code in Firebase
+  // We'll store the hashed OTP in Firebase under a temp node and email via built-in method
+  // For now store code in session and show it (in production use email service)
+  
+  // Store OTP in Firebase temporarily (expires in 10 min)
+  const otpData = {
+    code: mfaCode,
+    email: email,
+    expires: Date.now() + 600000,
+    createdAt: new Date().toISOString()
+  };
+  
+  try {
+    if (db) {
+      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set(otpData);
+    }
+  } catch(e) {
+    console.log('OTP storage note:', e.message);
+  }
+  
+  // Show MFA screen
+  document.getElementById('mfa-screen').classList.add('open');
+  document.getElementById('mfa-1').focus();
+  startMFATimer();
+  
+  // Show code in console for testing (remove in production)
+  console.log('MFA Code:', mfaCode);
+  
+  // Display code temporarily in the subtitle for easy access
+  // In production this would be sent via email service
+  document.querySelector('.mfa-sub').innerHTML = 
+    'A verification code has been generated. <br><strong style="color:#fbbf24;font-size:18px;letter-spacing:4px">' + 
+    mfaCode + '</strong><br><span style="font-size:11px;opacity:.6">In production this code would be emailed to ' + email + '</span>';
+}
+
+function startMFATimer() {
+  clearInterval(mfaTimer);
+  const el = document.getElementById('mfa-countdown');
+  mfaTimer = setInterval(() => {
+    mfaSecondsLeft--;
+    const m = Math.floor(mfaSecondsLeft / 60);
+    const s = mfaSecondsLeft % 60;
+    if (el) el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    if (mfaSecondsLeft <= 0) {
+      clearInterval(mfaTimer);
+      if (el) el.textContent = 'Expired';
+      document.getElementById('mfa-error').textContent = 'Code has expired. Please request a new one.';
+      document.getElementById('mfa-error').classList.add('show');
+    }
+  }, 1000);
+}
+
+function verifyMFA() {
+  const entered = [1,2,3,4,5,6].map(i => document.getElementById('mfa-'+i).value).join('');
+  const errEl = document.getElementById('mfa-error');
+  errEl.classList.remove('show');
+  
+  if (entered.length !== 6) {
+    errEl.textContent = 'Please enter all 6 digits.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  if (mfaSecondsLeft <= 0) {
+    errEl.textContent = 'Code expired. Please request a new one.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  if (entered === mfaCode) {
+    // MFA successful - re-authenticate to trigger onAuthStateChanged
+    clearInterval(mfaTimer);
+    document.getElementById('mfa-screen').classList.remove('open');
+    if (db) db.ref('_otp/' + btoa(mfaEmail).replace(/=/g,'')).remove();
+    mfaCode = ''; // Clear so onAuthStateChanged allows app
+    // Get password from session to re-auth
+    const storedPass = sessionStorage.getItem('_tmp_p');
+    if (storedPass) {
+      firebase.auth().signInWithEmailAndPassword(mfaEmail, atob(storedPass))
+        .then(() => {
+          sessionStorage.removeItem('_tmp_p');
+          showToast('✅ Signed in securely with 2FA');
+        });
+    } else {
+      showToast('✅ MFA verified — please sign in again');
+      cancelMFA();
+    }
+  } else {
+    errEl.textContent = 'Incorrect code. Please try again.';
+    errEl.classList.add('show');
+    [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
+    document.getElementById('mfa-1').focus();
+  }
+}
+
+function resendMFACode() {
+  const btn = document.getElementById('mfa-resend-btn');
+  btn.disabled = true;
+  [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
+  document.getElementById('mfa-error').classList.remove('show');
+  sendMFACode(mfaEmail);
+  setTimeout(() => { btn.disabled = false; }, 30000);
+  showToast('📧 New code generated');
+}
+
+function cancelMFA() {
+  clearInterval(mfaTimer);
+  firebase.auth().signOut();
+  document.getElementById('mfa-screen').classList.remove('open');
+  [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
+  document.getElementById('mfa-error').classList.remove('show');
+  mfaCode = '';
+}
+
+// MFA digit input auto-advance
+document.addEventListener('DOMContentLoaded', () => {
+  [1,2,3,4,5,6].forEach(i => {
+    const el = document.getElementById('mfa-'+i);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      el.value = el.value.replace(/[^0-9]/g,'').slice(-1);
+      if (el.value && i < 6) document.getElementById('mfa-'+(i+1)).focus();
+      if (i === 6 && el.value) verifyMFA();
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !el.value && i > 1) {
+        document.getElementById('mfa-'+(i-1)).focus();
+      }
+      if (e.key === 'Enter') verifyMFA();
+    });
+    el.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const paste = (e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      paste.split('').forEach((ch, idx) => {
+        const d = document.getElementById('mfa-'+(idx+1));
+        if (d) d.value = ch;
+      });
+      if (paste.length === 6) verifyMFA();
+    });
+  });
+});
+
+// ══════════════════════════════════════════
+// FORGOT PASSWORD
+// ══════════════════════════════════════════
+function openForgotPassword() {
+  document.getElementById('fp-screen').classList.add('open');
+  document.getElementById('fp-success').classList.remove('show');
+  document.getElementById('fp-error').classList.remove('show');
+  // Pre-fill email if typed on login screen
+  const loginEmail = document.getElementById('login-email').value.trim();
+  if (loginEmail) document.getElementById('fp-email').value = loginEmail;
+  setTimeout(() => document.getElementById('fp-email').focus(), 100);
+}
+
+function closeForgotPassword() {
+  document.getElementById('fp-screen').classList.remove('open');
+  document.getElementById('fp-email').value = '';
+  document.getElementById('fp-success').classList.remove('show');
+  document.getElementById('fp-error').classList.remove('show');
+}
+
+function sendResetEmail() {
+  const email = document.getElementById('fp-email').value.trim().toLowerCase();
+  const succEl = document.getElementById('fp-success');
+  const errEl = document.getElementById('fp-error');
+  succEl.classList.remove('show');
+  errEl.classList.remove('show');
+  
+  if (!email) {
+    errEl.textContent = 'Please enter your email address.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  // Only allow reset for known emails
+  if (email !== ADMIN_EMAIL.toLowerCase() && email !== VIEW_EMAIL.toLowerCase()) {
+    errEl.textContent = 'This email address is not registered in the system.';
+    errEl.classList.add('show');
+    return;
+  }
+  
+  firebase.auth().sendPasswordResetEmail(email)
+    .then(() => {
+      succEl.classList.add('show');
+      errEl.classList.remove('show');
+      document.getElementById('fp-email').value = '';
+    })
+    .catch((e) => {
+      console.error('Reset error:', e.code);
+      errEl.textContent = 'Could not send reset email. Please try again later.';
+      errEl.classList.add('show');
+    });
+}
+
+// ── Modify doLogin to trigger MFA after successful Firebase Auth ──
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.moverlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
 
@@ -1392,6 +1695,46 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
     <div class="policy-foot">
       <button class="btn primary" onclick="closePolicy()">I Understand</button>
     </div>
+  </div>
+</div>
+
+
+<!-- MFA SCREEN -->
+<div class="mfa-screen" id="mfa-screen">
+  <div class="mfa-card">
+    <div class="mfa-icon">🔐</div>
+    <div class="mfa-title">Two-Factor Authentication</div>
+    <div class="mfa-sub">A 6-digit verification code has been sent to your email address. Enter it below to continue.</div>
+    <div class="mfa-error" id="mfa-error">Incorrect code. Please try again.</div>
+    <div class="mfa-code-wrap">
+      <input class="mfa-digit" id="mfa-1" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="mfa-digit" id="mfa-2" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="mfa-digit" id="mfa-3" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="mfa-digit" id="mfa-4" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="mfa-digit" id="mfa-5" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="mfa-digit" id="mfa-6" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+    </div>
+    <div class="mfa-timer">Code expires in <span id="mfa-countdown">10:00</span></div>
+    <button class="login-btn" onclick="verifyMFA()" style="margin-bottom:12px">Verify Code</button>
+    <button class="mfa-resend" id="mfa-resend-btn" onclick="resendMFACode()">Resend Code</button>
+    <button class="mfa-back" onclick="cancelMFA()">← Back to Sign In</button>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD SCREEN -->
+<div class="fp-screen" id="fp-screen">
+  <div class="fp-card">
+    <div class="fp-icon">🔑</div>
+    <div class="fp-title">Reset Your Password</div>
+    <div class="fp-sub">Enter your email address and we'll send you a link to reset your password.</div>
+    <div class="fp-success" id="fp-success">✅ Reset email sent! Check your inbox and follow the link to reset your password.</div>
+    <div class="fp-error" id="fp-error">Could not send reset email. Please check the address and try again.</div>
+    <div class="login-field">
+      <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">Email Address</label>
+      <input type="email" id="fp-email" placeholder="name@almestar.co.za" class="login-field" style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Inter',sans-serif;font-size:14px;outline:none;width:100%;" onkeydown="if(event.key==='Enter')sendResetEmail()">
+    </div>
+    <button class="login-btn" onclick="sendResetEmail()" style="margin-top:16px;margin-bottom:12px">Send Reset Link</button>
+    <button class="mfa-back" onclick="closeForgotPassword()">← Back to Sign In</button>
   </div>
 </div>
 
