@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1465,41 +1466,40 @@ async function sendMFACode(email) {
   mfaCode = generateOTP();
   mfaEmail = email;
   mfaSecondsLeft = 600;
-  
-  // Send via Firebase Email (using a cloud function alternative)
-  // Since we can't use cloud functions on free tier, we use EmailJS or store code in Firebase
-  // We'll store the hashed OTP in Firebase under a temp node and email via built-in method
-  // For now store code in session and show it (in production use email service)
-  
-  // Store OTP in Firebase temporarily (expires in 10 min)
-  const otpData = {
-    code: mfaCode,
-    email: email,
-    expires: Date.now() + 600000,
-    createdAt: new Date().toISOString()
-  };
-  
-  try {
-    if (db) {
-      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set(otpData);
-    }
-  } catch(e) {
-    console.log('OTP storage note:', e.message);
-  }
-  
-  // Show MFA screen
+
+  // Show MFA screen immediately
   document.getElementById('mfa-screen').classList.add('open');
+  document.querySelector('.mfa-sub').innerHTML = 'A 6-digit verification code is being sent to<br><strong style="color:#fff">' + email + '</strong><br><span style="font-size:11px;opacity:.6">Please check your inbox...</span>';
   document.getElementById('mfa-1').focus();
   startMFATimer();
-  
-  // Show code in console for testing (remove in production)
-  console.log('MFA Code:', mfaCode);
-  
-  // Display code temporarily in the subtitle for easy access
-  // In production this would be sent via email service
-  document.querySelector('.mfa-sub').innerHTML = 
-    'A verification code has been generated. <br><strong style="color:#fbbf24;font-size:18px;letter-spacing:4px">' + 
-    mfaCode + '</strong><br><span style="font-size:11px;opacity:.6">In production this code would be emailed to ' + email + '</span>';
+
+  // Send via EmailJS
+  try {
+    emailjs.init('jq4J39XCosgQw3q5N');
+    await emailjs.send('service_a7qtuas', 's8n7yyb', {
+      to_email: email,
+      otp_code: mfaCode,
+      name: 'X-Corp Asset System',
+      message: 'Your verification code is: ' + mfaCode
+    });
+    document.querySelector('.mfa-sub').innerHTML = 
+      'A 6-digit verification code has been sent to<br><strong style="color:#fff">' + email + '</strong><br><span style="font-size:11px;opacity:.6">Check your inbox and enter the code below.</span>';
+  } catch(e) {
+    console.error('EmailJS error:', e);
+    document.querySelector('.mfa-sub').innerHTML = 
+      'Failed to send email. Please try again.<br><button onclick="resendMFACode()" style="color:#fbbf24;background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline;">Retry sending code</button>';
+  }
+
+  // Store OTP in Firebase temporarily
+  try {
+    if (db) {
+      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set({
+        code: mfaCode, email: email,
+        expires: Date.now() + 600000,
+        createdAt: new Date().toISOString()
+      });
+    }
+  } catch(e) { console.log('OTP store note:', e.message); }
 }
 
 function startMFATimer() {
