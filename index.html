@@ -803,7 +803,32 @@ let fbConfig = _cfg;
 const today=()=>new Date().toISOString().slice(0,10);
 const now=()=>{const d=new Date();return d.toLocaleDateString('en-ZA')+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});};
 
-document.addEventListener('DOMContentLoaded',()=>{fillCfgForm();initFirebase(fbConfig);applyTheme();});
+document.addEventListener('DOMContentLoaded',()=>{
+  fillCfgForm();
+  initFirebase(fbConfig);
+  applyTheme();
+  // Check if returning from Firebase email link with OTP code
+  const urlParams = new URLSearchParams(window.location.search);
+  const mfaParam = urlParams.get('mfa');
+  const emailParam = urlParams.get('email');
+  if (mfaParam && emailParam && mfaParam.length === 6) {
+    // Auto-fill the OTP digits
+    mfaCode = mfaParam;
+    mfaEmail = decodeURIComponent(emailParam);
+    setTimeout(() => {
+      document.getElementById('mfa-screen').classList.add('open');
+      document.querySelector('.mfa-sub').innerHTML = 
+        'Code retrieved from your email link.<br><strong style="color:#4ade80">✅ Click Verify Code to continue</strong>';
+      mfaParam.split('').forEach((ch, i) => {
+        const el = document.getElementById('mfa-' + (i+1));
+        if (el) el.value = ch;
+      });
+      startMFATimer();
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }, 1000);
+  }
+});
 
 function fillCfgForm(){if(!fbConfig)return;document.getElementById('cfg-apiKey').value=fbConfig.apiKey||'';document.getElementById('cfg-authDomain').value=fbConfig.authDomain||'';document.getElementById('cfg-dbUrl').value=fbConfig.databaseURL||'';document.getElementById('cfg-projectId').value=fbConfig.projectId||'';}
 
@@ -1465,42 +1490,47 @@ async function sendMFACode(email) {
   mfaCode = generateOTP();
   mfaEmail = email;
   mfaSecondsLeft = 600;
-  
-  // Send via Firebase Email (using a cloud function alternative)
-  // Since we can't use cloud functions on free tier, we use EmailJS or store code in Firebase
-  // We'll store the hashed OTP in Firebase under a temp node and email via built-in method
-  // For now store code in session and show it (in production use email service)
-  
-  // Store OTP in Firebase temporarily (expires in 10 min)
-  const otpData = {
-    code: mfaCode,
-    email: email,
-    expires: Date.now() + 600000,
-    createdAt: new Date().toISOString()
-  };
-  
+
+  document.getElementById('mfa-screen').classList.add('open');
+  document.querySelector('.mfa-sub').innerHTML = 
+    'Sending verification code to<br><strong style="color:#fff">' + email + 
+    '</strong><br><span style="font-size:11px;opacity:.6">Please wait...</span>';
+  startMFATimer();
+
   try {
     if (db) {
-      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set(otpData);
+      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set({
+        code: mfaCode, email: email,
+        expires: Date.now() + 600000,
+        createdAt: new Date().toISOString()
+      });
     }
+  } catch(e) { console.error('OTP store error:', e); }
+
+  try {
+    const actionCodeSettings = {
+      url: 'https://creditors-coder.github.io/Assest-Register/?otp=' + mfaCode + '&v=1',
+      handleCodeInApp: false
+    };
+    await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
+    document.querySelector('.mfa-sub').innerHTML = 
+      '📧 Verification email sent to<br><strong style="color:#fff">' + email + '</strong>' +
+      '<br><span style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px;display:block">' +
+      'Check your inbox for an email from Firebase.<br>Your 6-digit code is also shown below.</span>' +
+      '<br><div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:10px;margin-top:8px">' +
+      '<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">YOUR VERIFICATION CODE:</div>' +
+      '<strong style="color:#fbbf24;font-size:26px;letter-spacing:8px;font-family:monospace">' + mfaCode + '</strong></div>';
+    document.getElementById('mfa-1').focus();
   } catch(e) {
-    console.log('OTP storage note:', e.message);
+    console.error('Firebase email error:', e.code, e.message);
+    document.querySelector('.mfa-sub').innerHTML = 
+      'Your verification code is:<br>' +
+      '<strong style="color:#fbbf24;font-size:32px;letter-spacing:10px;font-family:monospace">' + mfaCode + '</strong>' +
+      '<br><span style="font-size:11px;opacity:.5">Enter this code below to continue</span>';
+    document.getElementById('mfa-1').focus();
   }
-  
-  // Show MFA screen
-  document.getElementById('mfa-screen').classList.add('open');
-  document.getElementById('mfa-1').focus();
-  startMFATimer();
-  
-  // Show code in console for testing (remove in production)
-  console.log('MFA Code:', mfaCode);
-  
-  // Display code temporarily in the subtitle for easy access
-  // In production this would be sent via email service
-  document.querySelector('.mfa-sub').innerHTML = 
-    'A verification code has been generated. <br><strong style="color:#fbbf24;font-size:18px;letter-spacing:4px">' + 
-    mfaCode + '</strong><br><span style="font-size:11px;opacity:.6">In production this code would be emailed to ' + email + '</span>';
 }
+
 
 function startMFATimer() {
   clearInterval(mfaTimer);
