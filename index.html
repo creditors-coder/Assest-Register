@@ -862,9 +862,10 @@ function initFirebase(cfg){
         }
         // Only show app after MFA is verified
         if (!mfaVerified) {
-          console.log('Waiting for MFA verification...');
+          console.log('MFA pending - waiting for verification before loading data');
           return;
         }
+        // MFA already verified - attach listeners
         assetsRef.on('value',snap=>{assets=snap.val()||{};updateStats();renderAssets();renderSerials();populateIssueSelects();});
         empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();});
         histRef.on('value',snap=>{historyLog=snap.val()||{};renderHistory();});
@@ -1576,6 +1577,17 @@ function verifyMFA() {
     sessionStorage.removeItem('_tmp_p');
     document.getElementById('mfa-screen').classList.remove('open');
     if (db) db.ref('_otp/' + btoa(mfaEmail).replace(/=/g,'')).remove().catch(()=>{});
+    // Attach DB listeners now (onAuthStateChanged returned early before MFA)
+    if (assetsRef) {
+      assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
+    }
+    if (empRef) {
+      empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); });
+    }
+    if (histRef) {
+      histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
+    }
+    setSyncStatus('live', 'Live sync');
     showApp();
     startSession();
     showToast('\u2705 Signed in securely with 2FA');
