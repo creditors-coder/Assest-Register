@@ -1541,52 +1541,54 @@ function generateOTP() {
 async function sendMFACode(email, encodedPass) {
   mfaCode = generateOTP();
   mfaEmail = email;
+  mfaVerified = false;
   mfaSecondsLeft = 600;
 
   document.getElementById('mfa-screen').classList.add('open');
-  document.querySelector('.mfa-sub').innerHTML = 
-    'Sending verification code to<br><strong style="color:#fff">' + email + 
+  document.querySelector('.mfa-sub').innerHTML =
+    'Sending verification code to<br><strong style="color:#fff">' + email +
     '</strong><br><span style="font-size:11px;opacity:.6">Please wait...</span>';
   startMFATimer();
 
-  try {
-    if (db) {
-      await db.ref('_otp/' + btoa(email).replace(/=/g,'')).set({
-        code: mfaCode, email: email,
-        expires: Date.now() + 600000,
-        createdAt: new Date().toISOString()
-      });
-    }
-  } catch(e) { console.error('OTP store error:', e); }
-
-  // Send OTP via Firebase password reset email (free, built-in)
-  // The OTP is embedded in the reset link URL so user can see it
-  try {
-    // Use Firebase sendPasswordResetEmail with custom redirect containing OTP
-    // Firebase sends this email for free from noreply@asset-register-f824c.firebaseapp.com
-    await firebase.auth().sendPasswordResetEmail(email, {
-      url: 'https://creditors-coder.github.io/Assest-Register/?code=' + mfaCode,
-      handleCodeInApp: false
-    });
-    // Email sent successfully
-    document.querySelector('.mfa-sub').innerHTML = 
-      '📧 Verification email sent!<br>' +
-      '<span style="font-size:12px;color:rgba(255,255,255,.6)">Check <strong style="color:#fff">' + email + '</strong> for an email from Firebase.<br>' +
-      'Your code is in the link — or use the code shown below:</span>';
-  } catch(e) {
-    console.error('Firebase email error:', e.code);
-    // Email failed - show code on screen
+  // Store OTP in Firebase
+  if (db) {
+    db.ref('_otp/' + btoa(email).replace(/[=+/]/g,'')).set({
+      code: mfaCode, email: email,
+      expires: Date.now() + 600000,
+      createdAt: new Date().toISOString()
+    }).catch(e => console.log('OTP store:', e.message));
   }
-  
-  // Always show code clearly on screen as primary method
-  document.querySelector('.mfa-sub').innerHTML += 
-    '<div style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);' +
-    'border-radius:10px;padding:14px;margin-top:12px">' +
-    '<div style="font-size:11px;font-weight:600;color:#fbbf24;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Your Verification Code</div>' +
-    '<div style="color:#fbbf24;font-size:30px;letter-spacing:10px;font-family:monospace;font-weight:700">' + mfaCode + '</div>' +
-    '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:6px">Expires in 10 minutes</div>' +
-    '</div>';
-  document.getElementById('mfa-1').focus();
+
+  // Try Firebase email link (free)
+  const actionCodeSettings = {
+    url: 'https://creditors-coder.github.io/Assest-Register/?mfa=' + mfaCode,
+    handleCodeInApp: false
+  };
+
+  firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings)
+    .then(() => {
+      // Email sent successfully
+      document.querySelector('.mfa-sub').innerHTML =
+        '📧 Verification code sent to<br><strong style="color:#fff">' + email + '</strong>' +
+        '<br><span style="font-size:12px;color:rgba(255,255,255,.5)">Check your inbox.<br>Code also shown below as backup.</span>' +
+        '<div style="margin:12px 0 4px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:12px 10px">' +
+        '<div style="font-size:10px;color:#fbbf24;letter-spacing:.1em;margin-bottom:6px">YOUR CODE</div>' +
+        '<strong style="color:#fbbf24;font-size:30px;letter-spacing:10px;font-family:monospace">' + mfaCode + '</strong>' +
+        '</div>';
+      document.getElementById('mfa-1').focus();
+    })
+    .catch((e) => {
+      console.error('Firebase email error:', e.code, e.message);
+      // Fallback - show code on screen
+      document.querySelector('.mfa-sub').innerHTML =
+        'Enter this verification code to continue:' +
+        '<div style="margin:14px 0 4px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:14px 10px">' +
+        '<div style="font-size:10px;color:#fbbf24;letter-spacing:.1em;margin-bottom:6px">YOUR CODE</div>' +
+        '<strong style="color:#fbbf24;font-size:34px;letter-spacing:12px;font-family:monospace">' + mfaCode + '</strong>' +
+        '</div>' +
+        '<span style="font-size:11px;opacity:.45">Code expires in 10 minutes</span>';
+      document.getElementById('mfa-1').focus();
+    });
 }
 
 
