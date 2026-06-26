@@ -1336,22 +1336,12 @@ function doLogin() {
   }, 10000);
   
   firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then(async (userCredential) => {
+    .then((userCredential) => {
       clearTimeout(loginTimeout);
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
       const userEmail = (userCredential.user.email || '').toLowerCase();
-      totpEmail = userEmail;
-      // Check if user has TOTP set up
-      const totpData = await checkTOTPSetup(userEmail);
-      if (totpData && totpData.secret) {
-        // User has TOTP - show verify screen
-        totpSecret = totpData.secret;
-        showTOTPVerify(userEmail);
-      } else {
-        // First time - show setup screen
-        showTOTPSetup(userEmail);
-      }
+      showSimpleMFA(userEmail);
     })
     .catch((e) => {
       clearTimeout(loginTimeout);
@@ -1545,11 +1535,7 @@ let mfaTimer = null;
 let mfaVerified = false;
 let pendingUserCredential = null;
 
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-async // sendMFACode removed - using TOTP
+// generateOTP defined below in Simple MFA section
 
 
 
@@ -1637,7 +1623,6 @@ function sendResetEmail() {
     });
 }
 
-// ── Modify doLogin to trigger MFA after successful Firebase Auth ──
 
 
 
@@ -1770,54 +1755,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 </div>
 
 
-<!-- Old MFA screen removed - using TOTP -->
-<!-- TOTP SETUP SCREEN -->
-<div class="totp-screen" id="totp-setup-screen">
-  <div class="totp-card">
-    <div style="font-size:40px;margin-bottom:12px">📱</div>
-    <div class="totp-title">Set Up Authenticator App</div>
-    <div class="totp-sub">Scan this QR code with Google Authenticator or Microsoft Authenticator</div>
-    <div class="totp-qr">
-      
-    </div>
-    <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">Or enter this code manually:</div>
-    <div class="totp-secret" id="totp-secret-display"></div>
-    <div class="totp-steps">
-      <strong>Setup steps:</strong><br>
-      1. Install <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong><br>
-      2. Tap <strong>+</strong> → <strong>Scan QR code</strong><br>
-      3. Scan the code above<br>
-      4. Enter the 6-digit code shown in the app below
-    </div>
-    <div class="totp-error" id="totp-setup-error">Incorrect code. Please try again.</div>
-    <div class="totp-verify-wrap" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px">
-      <input class="totp-verify-input" id="totp-setup-code" maxlength="6" placeholder="000000" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyTOTPSetup()">
-      <button class="login-btn" style="flex:0 0 auto;padding:11px 20px;margin:0" onclick="verifyTOTPSetup()">Verify</button>
-    </div>
-    <button class="mfa-back" onclick="cancelTOTPSetup()">← Cancel Setup</button>
-  </div>
-</div>
-
-<!-- TOTP VERIFY SCREEN (replaces old MFA screen for returning users) -->
-<div class="mfa-screen" id="totp-verify-screen" style="display:none">
-  <div class="mfa-card">
-    <div class="mfa-icon">📱</div>
-    <div class="mfa-title">Authenticator Code</div>
-    <div class="mfa-sub" id="totp-verify-sub">Open your authenticator app and enter the 6-digit code for <strong style="color:#fff">X-Corp Asset System</strong></div>
-    <div class="mfa-error" id="totp-verify-error">Incorrect code. Please try again.</div>
-    <div class="mfa-code-wrap">
-      <input class="mfa-digit" id="tv-1" maxlength="1" type="text" inputmode="numeric">
-      <input class="mfa-digit" id="tv-2" maxlength="1" type="text" inputmode="numeric">
-      <input class="mfa-digit" id="tv-3" maxlength="1" type="text" inputmode="numeric">
-      <input class="mfa-digit" id="tv-4" maxlength="1" type="text" inputmode="numeric">
-      <input class="mfa-digit" id="tv-5" maxlength="1" type="text" inputmode="numeric">
-      <input class="mfa-digit" id="tv-6" maxlength="1" type="text" inputmode="numeric">
-    </div>
-    <div class="mfa-timer" style="color:rgba(255,255,255,.4);font-size:12px;margin-bottom:16px">Code refreshes every 30 seconds</div>
-    <button class="login-btn" onclick="verifyTOTPCode()" style="margin-bottom:12px">Verify Code</button>
-    <button class="mfa-back" onclick="cancelTOTPVerify()">← Back to Sign In</button>
-  </div>
-</div>
 
 </body>
 </html>
