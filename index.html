@@ -601,10 +601,10 @@ body.admin-mode .admin-only { display: inline-flex !important; }
     </div>
     <div class="toolbar">
       <div class="sbox"><i class="ti ti-search"></i><input type="text" id="asset-search" placeholder="Search by ID, name or serial…" oninput="renderAssets()"></div>
-      <select class="fsel" id="asset-cat" onchange="renderAssets()"><option value="">All Categories</option><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option></select>
+      <select class="fsel" id="asset-cat" onchange="renderAssets()"><option value="">All Categories</option><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Other</option></select>
       <select class="fsel" id="asset-status" onchange="renderAssets()"><option value="">All Statuses</option><option>Available</option><option>Issued</option><option>Retired</option></select>
       <button class="btn" onclick="exportCSV()" style="margin-left:auto"><i class="ti ti-file-spreadsheet"></i> Export Excel</button>
-      <button class="btn primary" onclick="editingAssetKey=null;document.getElementById('modal-title-asset').textContent='Add New Asset';document.getElementById('modal-save-asset').textContent='Save Asset';openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
+      <button class="btn primary" onclick="editingAssetKey=null;document.getElementById('modal-title-asset').textContent='Add New Asset';document.getElementById('modal-save-asset').textContent='Save Asset';document.getElementById('f-id').value=generateAssetId();document.getElementById('f-warranty-period').value='';document.getElementById('f-warranty').value='';document.getElementById('f-warranty-display').textContent='';openModal('modal-add-asset')"><i class="ti ti-plus"></i> Add Asset</button>
     </div>
     <div class="card">
       <div class="card-head"><span class="card-title">Asset Register</span><span class="card-count" id="asset-count">0</span></div>
@@ -621,7 +621,7 @@ body.admin-mode .admin-only { display: inline-flex !important; }
     </div>
     <div class="toolbar">
       <div class="sbox"><i class="ti ti-search"></i><input type="text" id="sn-search" placeholder="Search serial, asset or name…" oninput="renderSerials()"></div>
-      <select class="fsel" id="sn-cat" onchange="renderSerials()"><option value="">All Categories</option><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option></select>
+      <select class="fsel" id="sn-cat" onchange="renderSerials()"><option value="">All Categories</option><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Other</option></select>
       <select class="fsel" id="sn-has" onchange="renderSerials()"><option value="">All Assets</option><option value="yes">Has Serial</option><option value="no">Missing Serial</option></select>
     </div>
     <div class="card"><table><thead><tr><th>Asset ID</th><th>Description</th><th>Category</th><th>Serial Number</th><th>Status</th><th>Assigned To</th><th></th></tr></thead><tbody id="sn-tbody"></tbody></table></div>
@@ -717,7 +717,7 @@ body.admin-mode .admin-only { display: inline-flex !important; }
     <div class="mbody">
       <div class="frow">
         <div class="field"><label>Asset ID *</label><input type="text" id="f-id" placeholder="e.g. XC-LT-001"></div>
-        <div class="field"><label>Category</label><select id="f-cat"><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Printer</option><option>Copier</option><option>Tablet</option><option>Other</option></select></div>
+        <div class="field"><label>Category</label><select id="f-cat"><option>Laptop</option><option>Monitor</option><option>Phone</option><option>Other</option></select></div>
       </div>
       <div class="field"><label>Description *</label><input type="text" id="f-desc" placeholder="e.g. Dell Latitude 5540"></div>
       <div class="frow">
@@ -725,11 +725,23 @@ body.admin-mode .admin-only { display: inline-flex !important; }
         <div class="field"><label>Serial Number</label><input type="text" id="f-serial" placeholder="SN-…"></div>
       </div>
       <div class="frow">
-        <div class="field"><label>Purchase Date</label><input type="date" id="f-pdate"></div>
-        <div class="field"><label>Value (R)</label><input type="number" id="f-value" placeholder="0.00"></div>
+        <div class="field"><label>Purchase Date</label><input type="date" id="f-pdate" onchange="calcWarrantyExpiry()"></div>
+        <div class="field"><label>Value Inc VAT (R)</label><input type="number" id="f-value" placeholder="0.00" step="0.01"></div>
       </div>
       <div class="frow">
-        <div class="field"><label>Warranty Expiry</label><input type="date" id="f-warranty"></div>
+        <div class="field"><label>Warranty Period</label>
+          <select id="f-warranty-period" onchange="calcWarrantyExpiry()">
+            <option value="">-- Select Period --</option>
+            <option value="1">1 Year</option>
+            <option value="2">2 Years</option>
+            <option value="3">3 Years</option>
+            <option value="4">4 Years</option>
+            <option value="5">5 Years</option>
+            <option value="expired">Expired / None</option>
+          </select>
+          <input type="hidden" id="f-warranty">
+          <div id="f-warranty-display" style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;"></div>
+        </div>
         <div class="field"><label>Status</label><select id="f-status"><option>Available</option><option>Retired</option></select></div>
       </div>
       <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Optional notes…"></textarea></div>
@@ -979,7 +991,7 @@ function saveAssetDispatch(){if(editingAssetKey)updateAsset();else saveAsset();}
 function updateAsset(){
   const id=document.getElementById('f-id').value.trim(),desc=document.getElementById('f-desc').value.trim();
   if(!id||!desc){showToast('⚠️ Asset ID and Description required.');return;}
-  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,status:document.getElementById('f-status').value||'Available',notes:document.getElementById('f-notes').value.trim()};
+  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,warrantyPeriod:document.getElementById('f-warranty-period').value,status:document.getElementById('f-status').value||'Available',notes:document.getElementById('f-notes').value.trim()};
   if(assetsRef)assetsRef.child(editingAssetKey).update(a).then(()=>showToast('✅ Asset updated')).catch(err=>showToast('❌ '+err.message));
   else{Object.assign(assets[editingAssetKey],a);renderAssets();showToast('✅ Asset updated');}
   editingAssetKey=null;document.getElementById('modal-title-asset').textContent='Add New Asset';document.getElementById('modal-save-asset').textContent='Save Asset';
@@ -1021,7 +1033,7 @@ function saveAsset(){
   const id=document.getElementById('f-id').value.trim(),desc=document.getElementById('f-desc').value.trim();
   if(!id||!desc){showToast('⚠️ Asset ID and Description required.');return;}
   if(assetList().find(a=>a.id===id)){showToast('⚠️ Asset ID already exists.');return;}
-  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,status:document.getElementById('f-status').value||'Available',empId:'',issueDate:'',notes:document.getElementById('f-notes').value.trim(),createdAt:now()};
+  const a={id,desc,cat:document.getElementById('f-cat').value,brand:document.getElementById('f-brand').value.trim(),serial:document.getElementById('f-serial').value.trim(),pdate:document.getElementById('f-pdate').value,value:parseFloat(document.getElementById('f-value').value)||0,warranty:document.getElementById('f-warranty').value,warrantyPeriod:document.getElementById('f-warranty-period').value,status:document.getElementById('f-status').value||'Available',empId:'',issueDate:'',notes:document.getElementById('f-notes').value.trim(),createdAt:now()};
   const log={ts:now(),event:'added',assetId:a.id,desc:a.desc,empId:'',notes:'Added to register'};
   if(assetsRef){assetsRef.push(a).then(()=>showToast('✅ Asset added')).catch(err=>showToast('❌ '+err.message));if(histRef)histRef.push(log);}
   else{assets['local_'+Date.now()]=a;historyLog['local_'+Date.now()]=log;renderAssets();showToast('✅ Asset added');}
@@ -1142,7 +1154,7 @@ function renderHistory(){
 // EXPORT
 function exportCSV(){
   const list=assetList();
-  const rows=list.map(a=>({'Asset ID':a.id||'','Description':a.desc||'','Category':a.cat||'','Brand':a.brand||'','Serial Number':a.serial||'','Purchase Date':a.pdate||'','Value (R)':a.value||'','Warranty Expiry':a.warranty||'','Status':a.status||'','Assigned To':getEmpName(a.empId),'Issue Date':a.issueDate||'','Notes':a.notes||''}));
+  const rows=list.map(a=>({'Asset ID':a.id||'','Description':a.desc||'','Category':a.cat||'','Brand':a.brand||'','Serial Number':a.serial||'','Purchase Date':a.pdate||'','Value Inc VAT (R)':a.value||'','Warranty Expiry':a.warranty||'','Status':a.status||'','Assigned To':getEmpName(a.empId),'Issue Date':a.issueDate||'','Notes':a.notes||''}));
   const ws=XLSX.utils.json_to_sheet(rows);
   ws['!cols']=[{wch:12},{wch:28},{wch:12},{wch:14},{wch:18},{wch:14},{wch:10},{wch:14},{wch:12},{wch:22},{wch:12},{wch:24}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Assets');
@@ -1238,6 +1250,50 @@ function togglePassVis() {
 }
 
 // ── Login ──
+
+// ── Auto-generate Asset ID ──
+function generateAssetId() {
+  const existing = assetList().map(a => a.id || '');
+  let num = 1;
+  while (existing.includes('AS-' + String(num).padStart(3,'0'))) {
+    num++;
+  }
+  return 'AS-' + String(num).padStart(3,'0');
+}
+
+// ── Calculate Warranty Expiry from Purchase Date + Period ──
+function calcWarrantyExpiry() {
+  const period = document.getElementById('f-warranty-period').value;
+  const pdate = document.getElementById('f-pdate').value;
+  const display = document.getElementById('f-warranty-display');
+  const hiddenInput = document.getElementById('f-warranty');
+  
+  if (!period) {
+    if (hiddenInput) hiddenInput.value = '';
+    if (display) display.textContent = '';
+    return;
+  }
+  
+  if (period === 'expired') {
+    if (hiddenInput) hiddenInput.value = '';
+    if (display) display.textContent = 'No warranty / Already expired';
+    return;
+  }
+  
+  // Use purchase date if available, otherwise today
+  const baseDate = pdate ? new Date(pdate) : new Date();
+  const expiryDate = new Date(baseDate);
+  expiryDate.setFullYear(expiryDate.getFullYear() + parseInt(period));
+  
+  const yyyy = expiryDate.getFullYear();
+  const mm = String(expiryDate.getMonth()+1).padStart(2,'0');
+  const dd = String(expiryDate.getDate()).padStart(2,'0');
+  const expiryStr = yyyy + '-' + mm + '-' + dd;
+  
+  if (hiddenInput) hiddenInput.value = expiryStr;
+  if (display) display.textContent = 'Expires: ' + expiryDate.toLocaleDateString('en-ZA', {day:'2-digit',month:'short',year:'numeric'});
+}
+
 function doLogin() {
   // Lockout check
   const now = Date.now();
