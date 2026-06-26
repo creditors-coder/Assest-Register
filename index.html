@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/otpauth@9.3.6/dist/otpauth.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -513,6 +515,54 @@ body.admin-mode .admin-only { display: inline-flex !important; }
 .forgot-link{text-align:center;margin-top:14px;}
 .forgot-link button{background:none;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;font-family:inherit;transition:color .15s;text-decoration:underline;}
 .forgot-link button:hover{color:rgba(255,255,255,.75);}
+
+
+/* ── TOTP Setup Screen ── */
+.totp-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);
+  display:none;align-items:center;justify-content:center;
+  font-family:'Inter',sans-serif;
+}
+.totp-screen.open{display:flex;}
+.totp-card{
+  width:460px;max-width:95vw;
+  background:rgba(22,40,71,.95);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px;padding:36px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+  text-align:center;
+}
+.totp-title{color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;}
+.totp-sub{color:rgba(255,255,255,.45);font-size:13px;margin-bottom:20px;line-height:1.6;}
+.totp-qr{
+  background:#fff;border-radius:12px;
+  padding:16px;display:inline-block;margin-bottom:16px;
+}
+.totp-secret{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:8px 14px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  color:#fbbf24;letter-spacing:2px;margin-bottom:16px;
+  word-break:break-all;
+}
+.totp-steps{
+  background:rgba(255,255,255,.04);border-radius:10px;
+  padding:14px 16px;margin-bottom:20px;text-align:left;
+  font-size:12px;color:rgba(255,255,255,.6);line-height:1.8;
+}
+.totp-steps strong{color:rgba(255,255,255,.9);}
+.totp-verify-wrap{display:flex;gap:8px;margin-bottom:12px;}
+.totp-verify-input{
+  flex:1;padding:11px 14px;border-radius:10px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  color:#fff;font-family:'JetBrains Mono',monospace;
+  font-size:18px;letter-spacing:6px;text-align:center;
+  outline:none;
+}
+.totp-verify-input:focus{border-color:var(--red2);}
+.totp-error{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px;margin-bottom:12px;color:#f87171;font-size:12px;display:none;}
+.totp-error.show{display:block;}
 
 </style>
 </head>
@@ -1334,12 +1384,22 @@ function doLogin() {
   }, 10000);
   
   firebase.auth().signInWithEmailAndPassword(email, pass)
-    .then((userCredential) => {
+    .then(async (userCredential) => {
       clearTimeout(loginTimeout);
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
       const userEmail = (userCredential.user.email || '').toLowerCase();
-      sendMFACode(userEmail);
+      totpEmail = userEmail;
+      // Check if user has TOTP set up
+      const totpData = await checkTOTPSetup(userEmail);
+      if (totpData && totpData.secret) {
+        // User has TOTP - show verify screen
+        totpSecret = totpData.secret;
+        showTOTPVerify(userEmail);
+      } else {
+        // First time - show setup screen
+        showTOTPSetup(userEmail);
+      }
     })
     .catch((e) => {
       clearTimeout(loginTimeout);
@@ -1784,6 +1844,225 @@ function sendResetEmail() {
 
 // ── Modify doLogin to trigger MFA after successful Firebase Auth ──
 
+
+// ══════════════════════════════════════════
+// TOTP - GOOGLE AUTHENTICATOR SUPPORT
+// ══════════════════════════════════════════
+let totpSecret = null;
+let totpEmail = null;
+
+// Generate a random base32 secret
+function generateTOTPSecret() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let secret = '';
+  const array = new Uint8Array(20);
+  crypto.getRandomValues(array);
+  array.forEach(b => { secret += chars[b % 32]; });
+  return secret;
+}
+
+// Get current TOTP code from secret
+function getTOTPCode(secret) {
+  try {
+    const totp = new otpauth.TOTP({
+      issuer: 'X-Corp Asset System',
+      label: totpEmail || 'user',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: otpauth.Secret.fromBase32(secret)
+    });
+    return totp.generate();
+  } catch(e) {
+    console.error('TOTP generate error:', e);
+    return null;
+  }
+}
+
+// Validate TOTP code (checks current and ±1 period for clock drift)
+function validateTOTPCode(secret, code) {
+  try {
+    const totp = new otpauth.TOTP({
+      issuer: 'X-Corp Asset System',
+      label: totpEmail || 'user',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: otpauth.Secret.fromBase32(secret)
+    });
+    const delta = totp.validate({ token: code, window: 1 });
+    return delta !== null;
+  } catch(e) {
+    console.error('TOTP validate error:', e);
+    return false;
+  }
+}
+
+// Check if user has TOTP set up in Firebase
+async function checkTOTPSetup(email) {
+  if (!db) return null;
+  try {
+    const key = btoa(email).replace(/[=+/]/g, '');
+    const snap = await db.ref('_totp/' + key).once('value');
+    return snap.val();
+  } catch(e) {
+    console.error('TOTP check error:', e);
+    return null;
+  }
+}
+
+// Save TOTP secret to Firebase
+async function saveTOTPSecret(email, secret) {
+  if (!db) return;
+  try {
+    const key = btoa(email).replace(/[=+/]/g, '');
+    await db.ref('_totp/' + key).set({
+      secret: secret,
+      email: email,
+      createdAt: new Date().toISOString()
+    });
+  } catch(e) {
+    console.error('TOTP save error:', e);
+  }
+}
+
+// Show TOTP setup screen (first time)
+async function showTOTPSetup(email) {
+  totpEmail = email;
+  totpSecret = generateTOTPSecret();
+
+  // Generate QR code
+  const otpauth_url = 'otpauth://totp/X-Corp%20Asset%20System:' + encodeURIComponent(email) +
+    '?secret=' + totpSecret + '&issuer=X-Corp%20Asset%20System&algorithm=SHA1&digits=6&period=30';
+
+  document.getElementById('totp-secret-display').textContent = totpSecret;
+
+  const canvas = document.getElementById('totp-qr-canvas');
+  try {
+    await QRCode.toCanvas(canvas, otpauth_url, {
+      width: 200, margin: 1,
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+  } catch(e) {
+    console.error('QR error:', e);
+  }
+
+  document.getElementById('totp-setup-screen').classList.add('open');
+  document.getElementById('totp-setup-code').focus();
+}
+
+// Verify TOTP setup code
+async function verifyTOTPSetup() {
+  const code = document.getElementById('totp-setup-code').value.trim();
+  const errEl = document.getElementById('totp-setup-error');
+  errEl.classList.remove('show');
+
+  if (code.length !== 6) {
+    errEl.textContent = 'Please enter the 6-digit code from your app.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (validateTOTPCode(totpSecret, code)) {
+    // Save secret to Firebase
+    await saveTOTPSecret(totpEmail, totpSecret);
+    document.getElementById('totp-setup-screen').classList.remove('open');
+    // Now complete login
+    completeMFALogin();
+    showToast('✅ Authenticator app set up successfully!');
+  } else {
+    errEl.textContent = 'Incorrect code. Make sure your app is synced and try again.';
+    errEl.classList.add('show');
+    document.getElementById('totp-setup-code').value = '';
+    document.getElementById('totp-setup-code').focus();
+  }
+}
+
+function cancelTOTPSetup() {
+  document.getElementById('totp-setup-screen').classList.remove('open');
+  totpSecret = null;
+  firebase.auth().signOut();
+  sessionStorage.removeItem('_tmp_p');
+  sessionStorage.removeItem('xcorp_role');
+}
+
+// Show TOTP verify screen (returning users)
+function showTOTPVerify(email) {
+  totpEmail = email;
+  const screen = document.getElementById('totp-verify-screen');
+  screen.style.display = 'flex';
+  document.getElementById('totp-verify-error').classList.remove('show');
+  [1,2,3,4,5,6].forEach(i => {
+    const el = document.getElementById('tv-'+i);
+    if (el) { el.value = ''; }
+  });
+  document.getElementById('tv-1').focus();
+}
+
+// Verify TOTP code on login
+function verifyTOTPCode() {
+  const code = [1,2,3,4,5,6].map(i => (document.getElementById('tv-'+i)||{}).value||'').join('');
+  const errEl = document.getElementById('totp-verify-error');
+  errEl.classList.remove('show');
+
+  if (code.length !== 6) {
+    errEl.textContent = 'Please enter all 6 digits.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (validateTOTPCode(totpSecret, code)) {
+    document.getElementById('totp-verify-screen').style.display = 'none';
+    completeMFALogin();
+    showToast('✅ Signed in securely with Authenticator');
+  } else {
+    errEl.textContent = 'Incorrect code. Check your app and try again.';
+    errEl.classList.add('show');
+    [1,2,3,4,5,6].forEach(i => { const el = document.getElementById('tv-'+i); if(el) el.value=''; });
+    document.getElementById('tv-1').focus();
+  }
+}
+
+function cancelTOTPVerify() {
+  document.getElementById('totp-verify-screen').style.display = 'none';
+  totpSecret = null;
+  mfaVerified = false;
+  firebase.auth().signOut();
+  sessionStorage.removeItem('_tmp_p');
+  sessionStorage.removeItem('xcorp_role');
+}
+
+// Complete login after TOTP verification
+function completeMFALogin() {
+  mfaVerified = true;
+  mfaCode = '';
+  sessionStorage.removeItem('_tmp_p');
+  // Attach DB listeners
+  if (assetsRef) assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
+  if (empRef) empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
+  if (histRef) histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
+  setSyncStatus('live', 'Live sync');
+  showApp();
+  startSession();
+}
+
+// Setup digit inputs for TOTP verify screen
+document.addEventListener('DOMContentLoaded', () => {
+  [1,2,3,4,5,6].forEach(i => {
+    const el = document.getElementById('tv-'+i);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      el.value = el.value.replace(/[^0-9]/g,'').slice(-1);
+      if (el.value && i < 6) document.getElementById('tv-'+(i+1)).focus();
+      if (i === 6 && el.value) verifyTOTPCode();
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !el.value && i > 1) document.getElementById('tv-'+(i-1)).focus();
+      if (e.key === 'Enter') verifyTOTPCode();
+    });
+  });
+});
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.moverlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
 
@@ -1855,6 +2134,55 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
     </div>
     <button class="login-btn" onclick="sendResetEmail()" style="margin-top:16px;margin-bottom:12px">Send Reset Link</button>
     <button class="mfa-back" onclick="closeForgotPassword()">← Back to Sign In</button>
+  </div>
+</div>
+
+
+<!-- TOTP SETUP SCREEN -->
+<div class="totp-screen" id="totp-setup-screen">
+  <div class="totp-card">
+    <div style="font-size:40px;margin-bottom:12px">📱</div>
+    <div class="totp-title">Set Up Authenticator App</div>
+    <div class="totp-sub">Scan this QR code with Google Authenticator or Microsoft Authenticator</div>
+    <div class="totp-qr">
+      <canvas id="totp-qr-canvas"></canvas>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">Or enter this code manually:</div>
+    <div class="totp-secret" id="totp-secret-display"></div>
+    <div class="totp-steps">
+      <strong>Setup steps:</strong><br>
+      1. Install <strong>Google Authenticator</strong> or <strong>Microsoft Authenticator</strong><br>
+      2. Tap <strong>+</strong> → <strong>Scan QR code</strong><br>
+      3. Scan the code above<br>
+      4. Enter the 6-digit code shown in the app below
+    </div>
+    <div class="totp-error" id="totp-setup-error">Incorrect code. Please try again.</div>
+    <div class="totp-verify-wrap">
+      <input class="totp-verify-input" id="totp-setup-code" maxlength="6" placeholder="000000" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyTOTPSetup()">
+      <button class="login-btn" style="flex:0 0 auto;padding:11px 20px;margin:0" onclick="verifyTOTPSetup()">Verify</button>
+    </div>
+    <button class="mfa-back" onclick="cancelTOTPSetup()">← Cancel Setup</button>
+  </div>
+</div>
+
+<!-- TOTP VERIFY SCREEN (replaces old MFA screen for returning users) -->
+<div class="mfa-screen" id="totp-verify-screen" style="display:none">
+  <div class="mfa-card">
+    <div class="mfa-icon">📱</div>
+    <div class="mfa-title">Authenticator Code</div>
+    <div class="mfa-sub" id="totp-verify-sub">Open your authenticator app and enter the 6-digit code for <strong style="color:#fff">X-Corp Asset System</strong></div>
+    <div class="mfa-error" id="totp-verify-error">Incorrect code. Please try again.</div>
+    <div class="mfa-code-wrap">
+      <input class="mfa-digit" id="tv-1" maxlength="1" type="text" inputmode="numeric">
+      <input class="mfa-digit" id="tv-2" maxlength="1" type="text" inputmode="numeric">
+      <input class="mfa-digit" id="tv-3" maxlength="1" type="text" inputmode="numeric">
+      <input class="mfa-digit" id="tv-4" maxlength="1" type="text" inputmode="numeric">
+      <input class="mfa-digit" id="tv-5" maxlength="1" type="text" inputmode="numeric">
+      <input class="mfa-digit" id="tv-6" maxlength="1" type="text" inputmode="numeric">
+    </div>
+    <div class="mfa-timer" style="color:rgba(255,255,255,.4);font-size:12px;margin-bottom:16px">Code refreshes every 30 seconds</div>
+    <button class="login-btn" onclick="verifyTOTPCode()" style="margin-bottom:12px">Verify Code</button>
+    <button class="mfa-back" onclick="cancelTOTPVerify()">← Back to Sign In</button>
   </div>
 </div>
 
