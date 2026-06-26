@@ -1749,10 +1749,8 @@ function sendResetEmail() {
   if (btn) { btn.textContent = 'Sending...'; btn.disabled = true; }
 
   // Firebase sendPasswordResetEmail - uses Firebase's own email system (free)
-  firebase.auth().sendPasswordResetEmail(email, {
-    url: 'https://creditors-coder.github.io/Assest-Register/',
-    handleCodeInApp: false
-  })
+  // Plain reset email - no custom URL needed
+  firebase.auth().sendPasswordResetEmail(email)
     .then(() => {
       succEl.textContent = '✅ Password reset email sent to ' + email + '. Check your inbox (and spam folder) for an email from Firebase.';
       succEl.classList.add('show');
@@ -1763,11 +1761,20 @@ function sendResetEmail() {
     .catch((e) => {
       console.error('Password reset error:', e.code, e.message);
       if (btn) { btn.textContent = 'Send Reset Link'; btn.disabled = false; }
-      let msg = 'Could not send reset email. Please try again.';
-      if (e.code === 'auth/user-not-found') msg = 'No account found with this email.';
-      if (e.code === 'auth/invalid-email') msg = 'Invalid email address format.';
-      if (e.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a few minutes.';
-      if (e.code === 'auth/network-request-failed') msg = 'Network error. Check your internet connection.';
+      let msg = '';
+      if (e.code === 'auth/user-not-found') {
+        msg = 'No Firebase account found. Please contact your administrator.';
+      } else if (e.code === 'auth/invalid-email') {
+        msg = 'Invalid email format.';
+      } else if (e.code === 'auth/too-many-requests') {
+        msg = 'Too many attempts. Wait a few minutes and try again.';
+      } else if (e.code === 'auth/network-request-failed') {
+        msg = 'Network error. Check your internet connection.';
+      } else if (e.code === 'auth/unauthorized-continue-uri') {
+        msg = 'Domain not authorised. Contact your administrator.';
+      } else {
+        msg = 'Error (' + e.code + '): ' + e.message;
+      }
       errEl.textContent = msg;
       errEl.classList.add('show');
     });
