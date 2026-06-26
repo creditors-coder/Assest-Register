@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/otpauth@9.3.6/dist/otpauth.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -526,12 +526,14 @@ body.admin-mode .admin-only { display: inline-flex !important; }
 }
 .totp-screen.open{display:flex;}
 .totp-card{
-  width:460px;max-width:95vw;
+  width:440px;max-width:95vw;
   background:rgba(22,40,71,.95);
   border:1px solid rgba(255,255,255,.12);
-  border-radius:24px;padding:36px;
+  border-radius:24px;padding:36px 32px;
   box-shadow:0 32px 80px rgba(0,0,0,.5);
   text-align:center;
+  max-height:95vh;
+  overflow-y:auto;
 }
 .totp-title{color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;}
 .totp-sub{color:rgba(255,255,255,.45);font-size:13px;margin-bottom:20px;line-height:1.6;}
@@ -1937,14 +1939,21 @@ async function showTOTPSetup(email) {
 
   document.getElementById('totp-secret-display').textContent = totpSecret;
 
-  const canvas = document.getElementById('totp-qr-canvas');
+  // Clear previous QR
+  const qrContainer = document.getElementById('totp-qr-canvas');
+  qrContainer.innerHTML = '';
   try {
-    await QRCode.toCanvas(canvas, otpauth_url, {
-      width: 200, margin: 1,
-      color: { dark: '#000000', light: '#ffffff' }
+    new QRCode(qrContainer, {
+      text: otpauth_url,
+      width: 200,
+      height: 200,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {
     console.error('QR error:', e);
+    qrContainer.innerHTML = '<div style="color:#f87171;font-size:12px;padding:10px">QR generation failed.<br>Use the manual code below.</div>';
   }
 
   document.getElementById('totp-setup-screen').classList.add('open');
@@ -2145,7 +2154,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
     <div class="totp-title">Set Up Authenticator App</div>
     <div class="totp-sub">Scan this QR code with Google Authenticator or Microsoft Authenticator</div>
     <div class="totp-qr">
-      <canvas id="totp-qr-canvas"></canvas>
+      
     </div>
     <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px">Or enter this code manually:</div>
     <div class="totp-secret" id="totp-secret-display"></div>
@@ -2157,7 +2166,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
       4. Enter the 6-digit code shown in the app below
     </div>
     <div class="totp-error" id="totp-setup-error">Incorrect code. Please try again.</div>
-    <div class="totp-verify-wrap">
+    <div class="totp-verify-wrap" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px">
       <input class="totp-verify-input" id="totp-setup-code" maxlength="6" placeholder="000000" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyTOTPSetup()">
       <button class="login-btn" style="flex:0 0 auto;padding:11px 20px;margin:0" onclick="verifyTOTPSetup()">Verify</button>
     </div>
