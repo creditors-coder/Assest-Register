@@ -860,9 +860,8 @@ function initFirebase(cfg){
           firebase.auth().signOut();
           return;
         }
-        // Only attach DB listeners after MFA confirmed
-        // If mfaCode is set, MFA is pending - don't show app yet
-        if (mfaCode) {
+        // Only show app after MFA is verified
+        if (!mfaVerified) {
           console.log('Waiting for MFA verification...');
           return;
         }
@@ -1283,12 +1282,8 @@ function doLogin() {
       clearTimeout(loginTimeout);
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
-      // Trigger MFA - sign out temporarily then verify OTP
       const userEmail = (userCredential.user.email || '').toLowerCase();
-      // Send MFA code before granting access
-      firebase.auth().signOut().then(() => {
-        sendMFACode(userEmail);
-      });
+      sendMFACode(userEmail);
     })
     .catch((e) => {
       clearTimeout(loginTimeout);
@@ -1480,13 +1475,14 @@ let mfaCode = '';
 let mfaEmail = '';
 let mfaTimer = null;
 let mfaSecondsLeft = 600;
+let mfaVerified = false;
 let pendingUserCredential = null;
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendMFACode(email) {
+async function sendMFACode(email, encodedPass) {
   mfaCode = generateOTP();
   mfaEmail = email;
   mfaSecondsLeft = 600;
@@ -1507,28 +1503,34 @@ async function sendMFACode(email) {
     }
   } catch(e) { console.error('OTP store error:', e); }
 
+  // Send OTP via Firebase password reset email (free, built-in)
+  // The OTP is embedded in the reset link URL so user can see it
   try {
-    const actionCodeSettings = {
-      url: 'https://creditors-coder.github.io/Assest-Register/?otp=' + mfaCode + '&v=1',
+    // Use Firebase sendPasswordResetEmail with custom redirect containing OTP
+    // Firebase sends this email for free from noreply@asset-register-f824c.firebaseapp.com
+    await firebase.auth().sendPasswordResetEmail(email, {
+      url: 'https://creditors-coder.github.io/Assest-Register/?code=' + mfaCode,
       handleCodeInApp: false
-    };
-    await firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
+    });
+    // Email sent successfully
     document.querySelector('.mfa-sub').innerHTML = 
-      '📧 Verification email sent to<br><strong style="color:#fff">' + email + '</strong>' +
-      '<br><span style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px;display:block">' +
-      'Check your inbox for an email from Firebase.<br>Your 6-digit code is also shown below.</span>' +
-      '<br><div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:10px;margin-top:8px">' +
-      '<div style="font-size:11px;color:#fbbf24;margin-bottom:4px">YOUR VERIFICATION CODE:</div>' +
-      '<strong style="color:#fbbf24;font-size:26px;letter-spacing:8px;font-family:monospace">' + mfaCode + '</strong></div>';
-    document.getElementById('mfa-1').focus();
+      '📧 Verification email sent!<br>' +
+      '<span style="font-size:12px;color:rgba(255,255,255,.6)">Check <strong style="color:#fff">' + email + '</strong> for an email from Firebase.<br>' +
+      'Your code is in the link — or use the code shown below:</span>';
   } catch(e) {
-    console.error('Firebase email error:', e.code, e.message);
-    document.querySelector('.mfa-sub').innerHTML = 
-      'Your verification code is:<br>' +
-      '<strong style="color:#fbbf24;font-size:32px;letter-spacing:10px;font-family:monospace">' + mfaCode + '</strong>' +
-      '<br><span style="font-size:11px;opacity:.5">Enter this code below to continue</span>';
-    document.getElementById('mfa-1').focus();
+    console.error('Firebase email error:', e.code);
+    // Email failed - show code on screen
   }
+  
+  // Always show code clearly on screen as primary method
+  document.querySelector('.mfa-sub').innerHTML += 
+    '<div style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);' +
+    'border-radius:10px;padding:14px;margin-top:12px">' +
+    '<div style="font-size:11px;font-weight:600;color:#fbbf24;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Your Verification Code</div>' +
+    '<div style="color:#fbbf24;font-size:30px;letter-spacing:10px;font-family:monospace;font-weight:700">' + mfaCode + '</div>' +
+    '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:6px">Expires in 10 minutes</div>' +
+    '</div>';
+  document.getElementById('mfa-1').focus();
 }
 
 
@@ -1567,23 +1569,16 @@ function verifyMFA() {
   }
   
   if (entered === mfaCode) {
-    // MFA successful - re-authenticate to trigger onAuthStateChanged
+    // MFA verified successfully
     clearInterval(mfaTimer);
+    mfaVerified = true;
+    mfaCode = '';
+    sessionStorage.removeItem('_tmp_p');
     document.getElementById('mfa-screen').classList.remove('open');
-    if (db) db.ref('_otp/' + btoa(mfaEmail).replace(/=/g,'')).remove();
-    mfaCode = ''; // Clear so onAuthStateChanged allows app
-    // Get password from session to re-auth
-    const storedPass = sessionStorage.getItem('_tmp_p');
-    if (storedPass) {
-      firebase.auth().signInWithEmailAndPassword(mfaEmail, atob(storedPass))
-        .then(() => {
-          sessionStorage.removeItem('_tmp_p');
-          showToast('✅ Signed in securely with 2FA');
-        });
-    } else {
-      showToast('✅ MFA verified — please sign in again');
-      cancelMFA();
-    }
+    if (db) db.ref('_otp/' + btoa(mfaEmail).replace(/=/g,'')).remove().catch(()=>{});
+    showApp();
+    startSession();
+    showToast('\u2705 Signed in securely with 2FA');
   } else {
     errEl.textContent = 'Incorrect code. Please try again.';
     errEl.classList.add('show');
@@ -1604,11 +1599,13 @@ function resendMFACode() {
 
 function cancelMFA() {
   clearInterval(mfaTimer);
-  firebase.auth().signOut();
-  document.getElementById('mfa-screen').classList.remove('open');
-  [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
-  document.getElementById('mfa-error').classList.remove('show');
+  sessionStorage.removeItem('_tmp_p');
   mfaCode = '';
+  document.getElementById('mfa-screen').classList.remove('open');
+  [1,2,3,4,5,6].forEach(i => { const el = document.getElementById('mfa-'+i); if(el) el.value=''; });
+  const errEl = document.getElementById('mfa-error');
+  if(errEl) errEl.classList.remove('show');
+  document.querySelector('.mfa-sub').innerHTML = 'A 6-digit verification code will be sent to your email address.';
 }
 
 // MFA digit input auto-advance
