@@ -736,8 +736,7 @@ body.admin-mode .admin-only { display: inline-flex !important; }
             <option value="2">2 Years</option>
             <option value="3">3 Years</option>
             <option value="4">4 Years</option>
-            <option value="5">5 Years</option>
-            <option value="expired">Expired / None</option>
+            <option value="expired">Expired</option>
           </select>
           <input type="hidden" id="f-warranty">
           <div id="f-warranty-display" style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;"></div>
@@ -879,7 +878,7 @@ function initFirebase(cfg){
         }
         // MFA already verified - attach listeners
         assetsRef.on('value',snap=>{assets=snap.val()||{};updateStats();renderAssets();renderSerials();populateIssueSelects();});
-        empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();});
+        empRef.on('value',snap=>{employees=snap.val()||{};renderEmployees();populateIssueSelects();renderAssets();renderSerials();});
         histRef.on('value',snap=>{historyLog=snap.val()||{};renderHistory();});
         setSyncStatus('live','Live sync');
         showApp();
@@ -1638,7 +1637,7 @@ function verifyMFA() {
       assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
     }
     if (empRef) {
-      empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); });
+      empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
     }
     if (histRef) {
       histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
@@ -1725,34 +1724,51 @@ function closeForgotPassword() {
 }
 
 function sendResetEmail() {
-  const email = document.getElementById('fp-email').value.trim().toLowerCase();
+  const emailInput = document.getElementById('fp-email');
+  const email = emailInput.value.trim().toLowerCase();
   const succEl = document.getElementById('fp-success');
   const errEl = document.getElementById('fp-error');
   succEl.classList.remove('show');
   errEl.classList.remove('show');
-  
+
   if (!email) {
     errEl.textContent = 'Please enter your email address.';
     errEl.classList.add('show');
     return;
   }
-  
-  // Only allow reset for known emails
+
+  // Only allow reset for registered emails
   if (email !== ADMIN_EMAIL.toLowerCase() && email !== VIEW_EMAIL.toLowerCase()) {
     errEl.textContent = 'This email address is not registered in the system.';
     errEl.classList.add('show');
     return;
   }
-  
-  firebase.auth().sendPasswordResetEmail(email)
+
+  // Show loading state
+  const btn = document.querySelector('.fp-screen .login-btn');
+  if (btn) { btn.textContent = 'Sending...'; btn.disabled = true; }
+
+  // Firebase sendPasswordResetEmail - uses Firebase's own email system (free)
+  firebase.auth().sendPasswordResetEmail(email, {
+    url: 'https://creditors-coder.github.io/Assest-Register/',
+    handleCodeInApp: false
+  })
     .then(() => {
+      succEl.textContent = '✅ Password reset email sent to ' + email + '. Check your inbox (and spam folder) for an email from Firebase.';
       succEl.classList.add('show');
       errEl.classList.remove('show');
-      document.getElementById('fp-email').value = '';
+      emailInput.value = '';
+      if (btn) { btn.textContent = 'Send Reset Link'; btn.disabled = false; }
     })
     .catch((e) => {
-      console.error('Reset error:', e.code);
-      errEl.textContent = 'Could not send reset email. Please try again later.';
+      console.error('Password reset error:', e.code, e.message);
+      if (btn) { btn.textContent = 'Send Reset Link'; btn.disabled = false; }
+      let msg = 'Could not send reset email. Please try again.';
+      if (e.code === 'auth/user-not-found') msg = 'No account found with this email.';
+      if (e.code === 'auth/invalid-email') msg = 'Invalid email address format.';
+      if (e.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a few minutes.';
+      if (e.code === 'auth/network-request-failed') msg = 'Network error. Check your internet connection.';
+      errEl.textContent = msg;
       errEl.classList.add('show');
     });
 }
