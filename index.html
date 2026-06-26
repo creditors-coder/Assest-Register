@@ -820,27 +820,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   fillCfgForm();
   initFirebase(fbConfig);
   applyTheme();
-  // Check if returning from Firebase email link with OTP code
-  const urlParams = new URLSearchParams(window.location.search);
-  const mfaParam = urlParams.get('mfa');
-  const emailParam = urlParams.get('email');
-  if (mfaParam && emailParam && mfaParam.length === 6) {
-    // Auto-fill the OTP digits
-    mfaCode = mfaParam;
-    mfaEmail = decodeURIComponent(emailParam);
-    setTimeout(() => {
-      document.getElementById('mfa-screen').classList.add('open');
-      document.querySelector('.mfa-sub').innerHTML = 
-        'Code retrieved from your email link.<br><strong style="color:#4ade80">✅ Click Verify Code to continue</strong>';
-      mfaParam.split('').forEach((ch, i) => {
-        const el = document.getElementById('mfa-' + (i+1));
-        if (el) el.value = ch;
-      });
-      startMFATimer();
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }, 1000);
-  }
+  // URL param check removed
 });
 
 function fillCfgForm(){if(!fbConfig)return;document.getElementById('cfg-apiKey').value=fbConfig.apiKey||'';document.getElementById('cfg-authDomain').value=fbConfig.authDomain||'';document.getElementById('cfg-dbUrl').value=fbConfig.databaseURL||'';document.getElementById('cfg-projectId').value=fbConfig.projectId||'';}
@@ -1535,7 +1515,6 @@ let mfaTimer = null;
 let mfaVerified = false;
 let pendingUserCredential = null;
 
-// generateOTP defined below in Simple MFA section
 
 
 
@@ -1755,6 +1734,52 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 </div>
 
 
+
+<!-- SIMPLE MFA SCREEN -->
+<div id="simple-mfa-screen" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);display:none;visibility:hidden;opacity:0;pointer-events:none;align-items:center;justify-content:center;font-family:'Inter',sans-serif">
+  <div style="width:420px;max-width:95vw;background:rgba(22,40,71,.95);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:40px 36px;box-shadow:0 32px 80px rgba(0,0,0,.5)">
+    <div style="text-align:center;font-size:40px;margin-bottom:16px">🔐</div>
+    <div style="text-align:center;color:#fff;font-size:20px;font-weight:700;margin-bottom:6px">Two-Factor Authentication</div>
+    <div style="text-align:center;color:rgba(255,255,255,.45);font-size:13px;margin-bottom:24px">Enter the verification code below to continue</div>
+    <div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:16px;margin-bottom:20px;text-align:center">
+      <div style="font-size:11px;color:#fbbf24;letter-spacing:.1em;margin-bottom:8px;font-weight:600">YOUR VERIFICATION CODE</div>
+      <div id="simple-mfa-code-display" style="font-size:36px;font-weight:700;color:#fbbf24;letter-spacing:12px;font-family:'JetBrains Mono',monospace"></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:6px">Expires in <span id="simple-mfa-timer" style="color:#fbbf24;font-weight:600">10:00</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px">
+      <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em">Enter Code</label>
+      <input type="text" id="simple-mfa-input" maxlength="6" placeholder="000000" inputmode="numeric"
+        style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:8px;text-align:center;outline:none;width:100%"
+        onkeydown="if(event.key==='Enter')verifySimpleMFA()">
+    </div>
+    <div id="simple-mfa-error" style="background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;color:#f87171;font-size:12px;text-align:center;display:none"></div>
+    <button class="login-btn" onclick="verifySimpleMFA()" style="margin-top:4px">Verify Code</button>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="cancelSimpleMFA()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;font-family:inherit">← Back to Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD SCREEN -->
+<div class="fp-screen" id="fp-screen">
+  <div class="fp-card">
+    <div class="fp-icon">🔑</div>
+    <div class="fp-title">Reset Your Password</div>
+    <div class="fp-sub">Enter your email address and we'll send you a link to reset your password.</div>
+    <div class="fp-success" id="fp-success"></div>
+    <div class="fp-error" id="fp-error"></div>
+    <div class="login-field">
+      <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em">Email Address</label>
+      <input type="email" id="fp-email" placeholder="name@almestar.co.za"
+        style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Inter',sans-serif;font-size:14px;outline:none;width:100%"
+        onkeydown="if(event.key==='Enter')sendResetEmail()">
+    </div>
+    <button class="login-btn" onclick="sendResetEmail()" style="margin-top:16px">Send Reset Link</button>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="closeForgotPassword()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;font-family:inherit">← Back to Sign In</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
