@@ -1592,7 +1592,6 @@ function closePolicy() {
 let mfaCode = '';
 let mfaEmail = '';
 let mfaTimer = null;
-let mfaSecondsLeft = 600;
 let mfaVerified = false;
 let pendingUserCredential = null;
 
@@ -1600,171 +1599,15 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendMFACode(email, encodedPass) {
-  mfaCode = generateOTP();
-  mfaEmail = email;
-  mfaVerified = false;
-  mfaSecondsLeft = 600;
-
-  document.getElementById('mfa-screen').classList.add('open');
-  document.querySelector('.mfa-sub').innerHTML =
-    'Sending verification code to<br><strong style="color:#fff">' + email +
-    '</strong><br><span style="font-size:11px;opacity:.6">Please wait...</span>';
-  startMFATimer();
-
-  // Store OTP in Firebase
-  if (db) {
-    db.ref('_otp/' + btoa(email).replace(/[=+/]/g,'')).set({
-      code: mfaCode, email: email,
-      expires: Date.now() + 600000,
-      createdAt: new Date().toISOString()
-    }).catch(e => console.log('OTP store:', e.message));
-  }
-
-  // Try Firebase email link (free)
-  const actionCodeSettings = {
-    url: 'https://creditors-coder.github.io/Assest-Register/?mfa=' + mfaCode,
-    handleCodeInApp: false
-  };
-
-  firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings)
-    .then(() => {
-      // Email sent successfully
-      document.querySelector('.mfa-sub').innerHTML =
-        '📧 Verification code sent to<br><strong style="color:#fff">' + email + '</strong>' +
-        '<br><span style="font-size:12px;color:rgba(255,255,255,.5)">Check your inbox.<br>Code also shown below as backup.</span>' +
-        '<div style="margin:12px 0 4px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:12px 10px">' +
-        '<div style="font-size:10px;color:#fbbf24;letter-spacing:.1em;margin-bottom:6px">YOUR CODE</div>' +
-        '<strong style="color:#fbbf24;font-size:30px;letter-spacing:10px;font-family:monospace">' + mfaCode + '</strong>' +
-        '</div>';
-      document.getElementById('mfa-1').focus();
-    })
-    .catch((e) => {
-      console.error('Firebase email error:', e.code, e.message);
-      // Fallback - show code on screen
-      document.querySelector('.mfa-sub').innerHTML =
-        'Enter this verification code to continue:' +
-        '<div style="margin:14px 0 4px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:14px 10px">' +
-        '<div style="font-size:10px;color:#fbbf24;letter-spacing:.1em;margin-bottom:6px">YOUR CODE</div>' +
-        '<strong style="color:#fbbf24;font-size:34px;letter-spacing:12px;font-family:monospace">' + mfaCode + '</strong>' +
-        '</div>' +
-        '<span style="font-size:11px;opacity:.45">Code expires in 10 minutes</span>';
-      document.getElementById('mfa-1').focus();
-    });
-}
+async // sendMFACode removed - using TOTP
 
 
-function startMFATimer() {
-  clearInterval(mfaTimer);
-  const el = document.getElementById('mfa-countdown');
-  mfaTimer = setInterval(() => {
-    mfaSecondsLeft--;
-    const m = Math.floor(mfaSecondsLeft / 60);
-    const s = mfaSecondsLeft % 60;
-    if (el) el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-    if (mfaSecondsLeft <= 0) {
-      clearInterval(mfaTimer);
-      if (el) el.textContent = 'Expired';
-      document.getElementById('mfa-error').textContent = 'Code has expired. Please request a new one.';
-      document.getElementById('mfa-error').classList.add('show');
-    }
-  }, 1000);
-}
 
-function verifyMFA() {
-  const entered = [1,2,3,4,5,6].map(i => document.getElementById('mfa-'+i).value).join('');
-  const errEl = document.getElementById('mfa-error');
-  errEl.classList.remove('show');
-  
-  if (entered.length !== 6) {
-    errEl.textContent = 'Please enter all 6 digits.';
-    errEl.classList.add('show');
-    return;
-  }
-  
-  if (mfaSecondsLeft <= 0) {
-    errEl.textContent = 'Code expired. Please request a new one.';
-    errEl.classList.add('show');
-    return;
-  }
-  
-  if (entered === mfaCode) {
-    // MFA verified successfully
-    clearInterval(mfaTimer);
-    mfaVerified = true;
-    mfaCode = '';
-    sessionStorage.removeItem('_tmp_p');
-    document.getElementById('mfa-screen').classList.remove('open');
-    if (db) db.ref('_otp/' + btoa(mfaEmail).replace(/=/g,'')).remove().catch(()=>{});
-    // Attach DB listeners now (onAuthStateChanged returned early before MFA)
-    if (assetsRef) {
-      assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
-    }
-    if (empRef) {
-      empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
-    }
-    if (histRef) {
-      histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
-    }
-    setSyncStatus('live', 'Live sync');
-    showApp();
-    startSession();
-    showToast('\u2705 Signed in securely with 2FA');
-  } else {
-    errEl.textContent = 'Incorrect code. Please try again.';
-    errEl.classList.add('show');
-    [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
-    document.getElementById('mfa-1').focus();
-  }
-}
 
-function resendMFACode() {
-  const btn = document.getElementById('mfa-resend-btn');
-  btn.disabled = true;
-  [1,2,3,4,5,6].forEach(i => document.getElementById('mfa-'+i).value = '');
-  document.getElementById('mfa-error').classList.remove('show');
-  sendMFACode(mfaEmail);
-  setTimeout(() => { btn.disabled = false; }, 30000);
-  showToast('📧 New code generated');
-}
-
-function cancelMFA() {
-  clearInterval(mfaTimer);
-  sessionStorage.removeItem('_tmp_p');
-  mfaCode = '';
-  document.getElementById('mfa-screen').classList.remove('open');
-  [1,2,3,4,5,6].forEach(i => { const el = document.getElementById('mfa-'+i); if(el) el.value=''; });
-  const errEl = document.getElementById('mfa-error');
-  if(errEl) errEl.classList.remove('show');
-  document.querySelector('.mfa-sub').innerHTML = 'A 6-digit verification code will be sent to your email address.';
-}
 
 // MFA digit input auto-advance
 document.addEventListener('DOMContentLoaded', () => {
-  [1,2,3,4,5,6].forEach(i => {
-    const el = document.getElementById('mfa-'+i);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      el.value = el.value.replace(/[^0-9]/g,'').slice(-1);
-      if (el.value && i < 6) document.getElementById('mfa-'+(i+1)).focus();
-      if (i === 6 && el.value) verifyMFA();
-    });
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !el.value && i > 1) {
-        document.getElementById('mfa-'+(i-1)).focus();
-      }
-      if (e.key === 'Enter') verifyMFA();
-    });
-    el.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const paste = (e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
-      paste.split('').forEach((ch, idx) => {
-        const d = document.getElementById('mfa-'+(idx+1));
-        if (d) d.value = ch;
-      });
-      if (paste.length === 6) verifyMFA();
-    });
-  });
+  
 });
 
 // ══════════════════════════════════════════
@@ -2107,46 +1950,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 </div>
 
 
-<!-- MFA SCREEN -->
-<div class="mfa-screen" id="mfa-screen">
-  <div class="mfa-card">
-    <div class="mfa-icon">🔐</div>
-    <div class="mfa-title">Two-Factor Authentication</div>
-    <div class="mfa-sub">A 6-digit verification code has been sent to your email address. Enter it below to continue.</div>
-    <div class="mfa-error" id="mfa-error">Incorrect code. Please try again.</div>
-    <div class="mfa-code-wrap">
-      <input class="mfa-digit" id="mfa-1" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      <input class="mfa-digit" id="mfa-2" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      <input class="mfa-digit" id="mfa-3" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      <input class="mfa-digit" id="mfa-4" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      <input class="mfa-digit" id="mfa-5" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      <input class="mfa-digit" id="mfa-6" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-    </div>
-    <div class="mfa-timer">Code expires in <span id="mfa-countdown">10:00</span></div>
-    <button class="login-btn" onclick="verifyMFA()" style="margin-bottom:12px">Verify Code</button>
-    <button class="mfa-resend" id="mfa-resend-btn" onclick="resendMFACode()">Resend Code</button>
-    <button class="mfa-back" onclick="cancelMFA()">← Back to Sign In</button>
-  </div>
-</div>
-
-<!-- FORGOT PASSWORD SCREEN -->
-<div class="fp-screen" id="fp-screen">
-  <div class="fp-card">
-    <div class="fp-icon">🔑</div>
-    <div class="fp-title">Reset Your Password</div>
-    <div class="fp-sub">Enter your email address and we'll send you a link to reset your password.</div>
-    <div class="fp-success" id="fp-success">✅ Reset email sent! Check your inbox and follow the link to reset your password.</div>
-    <div class="fp-error" id="fp-error">Could not send reset email. Please check the address and try again.</div>
-    <div class="login-field">
-      <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;">Email Address</label>
-      <input type="email" id="fp-email" placeholder="name@almestar.co.za" class="login-field" style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Inter',sans-serif;font-size:14px;outline:none;width:100%;" onkeydown="if(event.key==='Enter')sendResetEmail()">
-    </div>
-    <button class="login-btn" onclick="sendResetEmail()" style="margin-top:16px;margin-bottom:12px">Send Reset Link</button>
-    <button class="mfa-back" onclick="closeForgotPassword()">← Back to Sign In</button>
-  </div>
-</div>
-
-
+<!-- Old MFA screen removed - using TOTP -->
 <!-- TOTP SETUP SCREEN -->
 <div class="totp-screen" id="totp-setup-screen">
   <div class="totp-card">
