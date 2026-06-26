@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/otpauth@9.3.6/dist/otpauth.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -517,54 +515,6 @@ body.admin-mode .admin-only { display: inline-flex !important; }
 .forgot-link button:hover{color:rgba(255,255,255,.75);}
 
 
-/* ── TOTP Setup Screen ── */
-.totp-screen{
-  position:fixed;inset:0;z-index:99999;
-  background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);
-  display:none;align-items:center;justify-content:center;
-  font-family:'Inter',sans-serif;
-}
-.totp-screen.open{display:flex;}
-.totp-card{
-  width:440px;max-width:95vw;
-  background:rgba(22,40,71,.95);
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:24px;padding:36px 32px;
-  box-shadow:0 32px 80px rgba(0,0,0,.5);
-  text-align:center;
-  max-height:95vh;
-  overflow-y:auto;
-}
-.totp-title{color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;}
-.totp-sub{color:rgba(255,255,255,.45);font-size:13px;margin-bottom:20px;line-height:1.6;}
-.totp-qr{
-  background:#fff;border-radius:12px;
-  padding:16px;display:inline-block;margin-bottom:16px;
-}
-.totp-secret{
-  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
-  border-radius:8px;padding:8px 14px;
-  font-family:'JetBrains Mono',monospace;font-size:13px;
-  color:#fbbf24;letter-spacing:2px;margin-bottom:16px;
-  word-break:break-all;
-}
-.totp-steps{
-  background:rgba(255,255,255,.04);border-radius:10px;
-  padding:14px 16px;margin-bottom:20px;text-align:left;
-  font-size:12px;color:rgba(255,255,255,.6);line-height:1.8;
-}
-.totp-steps strong{color:rgba(255,255,255,.9);}
-.totp-verify-wrap{display:flex;gap:8px;margin-bottom:12px;}
-.totp-verify-input{
-  flex:1;padding:11px 14px;border-radius:10px;
-  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
-  color:#fff;font-family:'JetBrains Mono',monospace;
-  font-size:18px;letter-spacing:6px;text-align:center;
-  outline:none;
-}
-.totp-verify-input:focus{border-color:var(--red2);}
-.totp-error{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px;margin-bottom:12px;color:#f87171;font-size:12px;display:none;}
-.totp-error.show{display:block;}
 
 </style>
 </head>
@@ -1690,230 +1640,100 @@ function sendResetEmail() {
 // ── Modify doLogin to trigger MFA after successful Firebase Auth ──
 
 
+
+
 // ══════════════════════════════════════════
-// TOTP - GOOGLE AUTHENTICATOR SUPPORT
+// SIMPLE MFA - CODE SHOWN ON SCREEN
 // ══════════════════════════════════════════
-let totpSecret = null;
-let totpEmail = null;
+let simpleMFACode = '';
+let simpleMFAEmail = '';
+let simpleMFATimer = null;
+let simpleMFASeconds = 600;
 
-// Generate a random base32 secret
-function generateTOTPSecret() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let secret = '';
-  const array = new Uint8Array(20);
-  crypto.getRandomValues(array);
-  array.forEach(b => { secret += chars[b % 32]; });
-  return secret;
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Get current TOTP code from secret
-function getTOTPCode(secret) {
-  try {
-    const totp = new otpauth.TOTP({
-      issuer: 'X-Corp Asset System',
-      label: totpEmail || 'user',
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: otpauth.Secret.fromBase32(secret)
-    });
-    return totp.generate();
-  } catch(e) {
-    console.error('TOTP generate error:', e);
-    return null;
-  }
+function showSimpleMFA(email) {
+  simpleMFACode = generateOTP();
+  simpleMFAEmail = email;
+  simpleMFASeconds = 600;
+
+  // Show MFA screen
+  const smfaEl = document.getElementById('simple-mfa-screen'); smfaEl.style.display='flex'; smfaEl.style.visibility='visible'; smfaEl.style.opacity='1'; smfaEl.style.pointerEvents='all';
+
+  // Start countdown
+  clearInterval(simpleMFATimer);
+  const timerEl = document.getElementById('simple-mfa-timer');
+  simpleMFATimer = setInterval(() => {
+    simpleMFASeconds--;
+    const m = Math.floor(simpleMFASeconds/60);
+    const s = simpleMFASeconds % 60;
+    if (timerEl) timerEl.textContent = m + ':' + (s<10?'0':'') + s;
+    if (simpleMFASeconds <= 0) {
+      clearInterval(simpleMFATimer);
+      document.getElementById('simple-mfa-error').textContent = 'Code expired. Please sign in again.';
+      document.getElementById('simple-mfa-error').classList.add('show');
+    }
+  }, 1000);
+
+  // Show code
+  document.getElementById('simple-mfa-code-display').textContent = simpleMFACode;
+  document.getElementById('simple-mfa-input').value = '';
+  document.getElementById('simple-mfa-error').classList.remove('show');
+  document.getElementById('simple-mfa-input').focus();
 }
 
-// Validate TOTP code (checks current and ±1 period for clock drift)
-function validateTOTPCode(secret, code) {
-  try {
-    const totp = new otpauth.TOTP({
-      issuer: 'X-Corp Asset System',
-      label: totpEmail || 'user',
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: otpauth.Secret.fromBase32(secret)
-    });
-    const delta = totp.validate({ token: code, window: 1 });
-    return delta !== null;
-  } catch(e) {
-    console.error('TOTP validate error:', e);
-    return false;
-  }
-}
-
-// Check if user has TOTP set up in Firebase
-async function checkTOTPSetup(email) {
-  if (!db) return null;
-  try {
-    const key = btoa(email).replace(/[=+/]/g, '');
-    const snap = await db.ref('_totp/' + key).once('value');
-    return snap.val();
-  } catch(e) {
-    console.error('TOTP check error:', e);
-    return null;
-  }
-}
-
-// Save TOTP secret to Firebase
-async function saveTOTPSecret(email, secret) {
-  if (!db) return;
-  try {
-    const key = btoa(email).replace(/[=+/]/g, '');
-    await db.ref('_totp/' + key).set({
-      secret: secret,
-      email: email,
-      createdAt: new Date().toISOString()
-    });
-  } catch(e) {
-    console.error('TOTP save error:', e);
-  }
-}
-
-// Show TOTP setup screen (first time)
-async function showTOTPSetup(email) {
-  totpEmail = email;
-  totpSecret = generateTOTPSecret();
-
-  // Generate QR code
-  const otpauth_url = 'otpauth://totp/X-Corp%20Asset%20System:' + encodeURIComponent(email) +
-    '?secret=' + totpSecret + '&issuer=X-Corp%20Asset%20System&algorithm=SHA1&digits=6&period=30';
-
-  document.getElementById('totp-secret-display').textContent = totpSecret;
-
-  // Clear previous QR
-  const qrContainer = document.getElementById('totp-qr-canvas');
-  qrContainer.innerHTML = '';
-  try {
-    new QRCode(qrContainer, {
-      text: otpauth_url,
-      width: 200,
-      height: 200,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } catch(e) {
-    console.error('QR error:', e);
-    qrContainer.innerHTML = '<div style="color:#f87171;font-size:12px;padding:10px">QR generation failed.<br>Use the manual code below.</div>';
-  }
-
-  document.getElementById('totp-setup-screen').classList.add('open');
-  document.getElementById('totp-setup-code').focus();
-}
-
-// Verify TOTP setup code
-async function verifyTOTPSetup() {
-  const code = document.getElementById('totp-setup-code').value.trim();
-  const errEl = document.getElementById('totp-setup-error');
+function verifySimpleMFA() {
+  const entered = document.getElementById('simple-mfa-input').value.trim();
+  const errEl = document.getElementById('simple-mfa-error');
   errEl.classList.remove('show');
 
-  if (code.length !== 6) {
-    errEl.textContent = 'Please enter the 6-digit code from your app.';
+  if (entered.length !== 6) {
+    errEl.textContent = 'Please enter the 6-digit code.';
     errEl.classList.add('show');
     return;
   }
-
-  if (validateTOTPCode(totpSecret, code)) {
-    // Save secret to Firebase
-    await saveTOTPSecret(totpEmail, totpSecret);
-    document.getElementById('totp-setup-screen').classList.remove('open');
-    // Now complete login
-    completeMFALogin();
-    showToast('✅ Authenticator app set up successfully!');
-  } else {
-    errEl.textContent = 'Incorrect code. Make sure your app is synced and try again.';
-    errEl.classList.add('show');
-    document.getElementById('totp-setup-code').value = '';
-    document.getElementById('totp-setup-code').focus();
-  }
-}
-
-function cancelTOTPSetup() {
-  document.getElementById('totp-setup-screen').classList.remove('open');
-  totpSecret = null;
-  firebase.auth().signOut();
-  sessionStorage.removeItem('_tmp_p');
-  sessionStorage.removeItem('xcorp_role');
-}
-
-// Show TOTP verify screen (returning users)
-function showTOTPVerify(email) {
-  totpEmail = email;
-  const screen = document.getElementById('totp-verify-screen');
-  screen.style.display = 'flex';
-  document.getElementById('totp-verify-error').classList.remove('show');
-  [1,2,3,4,5,6].forEach(i => {
-    const el = document.getElementById('tv-'+i);
-    if (el) { el.value = ''; }
-  });
-  document.getElementById('tv-1').focus();
-}
-
-// Verify TOTP code on login
-function verifyTOTPCode() {
-  const code = [1,2,3,4,5,6].map(i => (document.getElementById('tv-'+i)||{}).value||'').join('');
-  const errEl = document.getElementById('totp-verify-error');
-  errEl.classList.remove('show');
-
-  if (code.length !== 6) {
-    errEl.textContent = 'Please enter all 6 digits.';
+  if (simpleMFASeconds <= 0) {
+    errEl.textContent = 'Code expired. Please sign in again.';
     errEl.classList.add('show');
     return;
   }
-
-  if (validateTOTPCode(totpSecret, code)) {
-    document.getElementById('totp-verify-screen').style.display = 'none';
-    completeMFALogin();
-    showToast('✅ Signed in securely with Authenticator');
+  if (entered === simpleMFACode) {
+    clearInterval(simpleMFATimer);
+    const smfaEl2 = document.getElementById('simple-mfa-screen'); smfaEl2.style.display='none'; smfaEl2.style.visibility='hidden'; smfaEl2.style.opacity='0'; smfaEl2.style.pointerEvents='none';
+    simpleMFACode = '';
+    mfaVerified = true;
+    sessionStorage.removeItem('_tmp_p');
+    // Attach DB listeners
+    if (assetsRef) assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
+    if (empRef) empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
+    if (histRef) histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
+    setSyncStatus('live', 'Live sync');
+    showApp();
+    startSession();
+    showToast('✅ Signed in securely');
   } else {
-    errEl.textContent = 'Incorrect code. Check your app and try again.';
+    errEl.textContent = 'Incorrect code. Please try again.';
     errEl.classList.add('show');
-    [1,2,3,4,5,6].forEach(i => { const el = document.getElementById('tv-'+i); if(el) el.value=''; });
-    document.getElementById('tv-1').focus();
+    document.getElementById('simple-mfa-input').value = '';
+    document.getElementById('simple-mfa-input').focus();
   }
 }
 
-function cancelTOTPVerify() {
-  document.getElementById('totp-verify-screen').style.display = 'none';
-  totpSecret = null;
+function cancelSimpleMFA() {
+  clearInterval(simpleMFATimer);
+  simpleMFACode = '';
   mfaVerified = false;
+  sessionStorage.clear();
   firebase.auth().signOut();
-  sessionStorage.removeItem('_tmp_p');
-  sessionStorage.removeItem('xcorp_role');
+  const smfaEl2 = document.getElementById('simple-mfa-screen'); smfaEl2.style.display='none'; smfaEl2.style.visibility='hidden'; smfaEl2.style.opacity='0'; smfaEl2.style.pointerEvents='none';
+  document.getElementById('simple-mfa-input').value = '';
+  document.getElementById('simple-mfa-error').classList.remove('show');
+  const btn = document.querySelector('.login-btn');
+  if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
 }
 
-// Complete login after TOTP verification
-function completeMFALogin() {
-  mfaVerified = true;
-  mfaCode = '';
-  sessionStorage.removeItem('_tmp_p');
-  // Attach DB listeners
-  if (assetsRef) assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
-  if (empRef) empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
-  if (histRef) histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
-  setSyncStatus('live', 'Live sync');
-  showApp();
-  startSession();
-}
-
-// Setup digit inputs for TOTP verify screen
-document.addEventListener('DOMContentLoaded', () => {
-  [1,2,3,4,5,6].forEach(i => {
-    const el = document.getElementById('tv-'+i);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      el.value = el.value.replace(/[^0-9]/g,'').slice(-1);
-      if (el.value && i < 6) document.getElementById('tv-'+(i+1)).focus();
-      if (i === 6 && el.value) verifyTOTPCode();
-    });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !el.value && i > 1) document.getElementById('tv-'+(i-1)).focus();
-      if (e.key === 'Enter') verifyTOTPCode();
-    });
-  });
-});
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.moverlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
