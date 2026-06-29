@@ -648,6 +648,7 @@ body.admin-mode .admin-only { display: inline-flex !important; }
         <div class="fstack">
           <div class="field"><label>Select Employee</label><select id="issue-emp"><option value="">— choose employee —</option></select></div>
           <div class="field"><label>Select Available Asset</label><select id="issue-asset"><option value="">— choose asset —</option></select></div>
+          <div class="field"><label>Issue Date</label><input type="date" id="issue-date"></div>
           <div class="field"><label>Notes</label><input type="text" id="issue-notes" placeholder="Optional notes…"></div>
           <button class="btn primary" onclick="issueAsset()"><i class="ti ti-arrow-up-right"></i> Issue Asset</button>
         </div>
@@ -1101,9 +1102,13 @@ function issueAsset(){
   const empId=document.getElementById('issue-emp').value,assetKey=document.getElementById('issue-asset').value,notes=document.getElementById('issue-notes').value;
   if(!empId||!assetKey){showToast('⚠️ Select both employee and asset.');return;}
   const a=assets[assetKey];if(!a)return;
-  const update={status:'Issued',empId,issueDate:today()},log={ts:now(),event:'issued',assetId:a.id,desc:a.desc,empId,notes};
+  const issueDateEl=document.getElementById('issue-date');
+  const issueDate=issueDateEl&&issueDateEl.value?issueDateEl.value:today();
+  const update={status:'Issued',empId,issueDate},log={ts:now(),event:'issued',assetId:a.id,desc:a.desc,empId,notes};
   if(assetsRef){assetsRef.child(assetKey).update(update);if(histRef)histRef.push(log);}else{Object.assign(assets[assetKey],update);historyLog['local_'+Date.now()]=log;renderAssets();}
-  document.getElementById('issue-notes').value='';populateIssueSelects();showToast(`✅ ${a.desc} issued to ${getEmpName(empId)}`);
+  document.getElementById('issue-notes').value='';
+  const idEl=document.getElementById('issue-date');if(idEl)idEl.value='';
+  populateIssueSelects();showToast(`✅ ${a.desc} issued to ${getEmpName(empId)}`);
 }
 function returnAsset(){
   const assetKey=document.getElementById('return-asset').value,cond=document.getElementById('return-cond').value,notes=document.getElementById('return-notes').value;
