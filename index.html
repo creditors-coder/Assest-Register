@@ -516,6 +516,48 @@ body.admin-mode .admin-only { display: inline-flex !important; }
 
 
 
+
+/* ── Passkey Screen ── */
+.passkey-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0a1628 0%,#162847 40%,#0d1f3c 100%);
+  display:none;align-items:center;justify-content:center;
+  font-family:'Inter',sans-serif;
+}
+.passkey-screen.open{display:flex;}
+.passkey-card{
+  width:420px;max-width:95vw;
+  background:rgba(22,40,71,.95);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:24px;padding:40px 36px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+  text-align:center;
+}
+.passkey-icon{font-size:56px;margin-bottom:16px;}
+.passkey-title{color:#fff;font-size:20px;font-weight:700;margin-bottom:6px;}
+.passkey-sub{color:rgba(255,255,255,.45);font-size:13px;margin-bottom:28px;line-height:1.6;}
+.passkey-btn{
+  width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#c0392b,#e74c3c);
+  color:#fff;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;
+  box-shadow:0 4px 16px rgba(192,57,43,.4);
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:12px;
+}
+.passkey-btn:hover{background:linear-gradient(135deg,#a93226,#c0392b);transform:translateY(-1px);}
+.passkey-btn:disabled{opacity:.5;cursor:default;transform:none;}
+.passkey-or{color:rgba(255,255,255,.25);font-size:12px;margin:4px 0 12px;}
+.passkey-alt{
+  width:100%;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,.15);
+  background:none;color:rgba(255,255,255,.6);font-size:13px;
+  font-family:'Inter',sans-serif;cursor:pointer;transition:all .15s;
+}
+.passkey-alt:hover{background:rgba(255,255,255,.06);color:#fff;}
+.passkey-error{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;color:#f87171;font-size:12px;display:none;}
+.passkey-error.show{display:block;}
+.passkey-success{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;color:#4ade80;font-size:13px;display:none;}
+.passkey-success.show{display:block;}
+
 </style>
 </head>
 <body>
@@ -1326,7 +1368,12 @@ function doLogin() {
       failedAttempts = 0;
       if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
       const userEmail = (userCredential.user.email || '').toLowerCase();
-      showSimpleMFA(userEmail);
+      // Use passkey if browser supports it, otherwise fall back to MFA code
+      if (supportsPasskey()) {
+        showPasskeyScreen(userEmail);
+      } else {
+        showSimpleMFA(userEmail);
+      }
     })
     .catch((e) => {
       clearTimeout(loginTimeout);
@@ -1672,16 +1719,7 @@ function verifySimpleMFA() {
     clearInterval(simpleMFATimer);
     const smfaEl2 = document.getElementById('simple-mfa-screen'); smfaEl2.style.display='none'; smfaEl2.style.visibility='hidden'; smfaEl2.style.opacity='0'; smfaEl2.style.pointerEvents='none';
     simpleMFACode = '';
-    mfaVerified = true;
-    sessionStorage.removeItem('_tmp_p');
-    // Attach DB listeners
-    if (assetsRef) assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
-    if (empRef) empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
-    if (histRef) histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
-    setSyncStatus('live', 'Live sync');
-    showApp();
-    startSession();
-    showToast('✅ Signed in securely');
+    completeMFAVerified();
   } else {
     errEl.textContent = 'Incorrect code. Please try again.';
     errEl.classList.add('show');
@@ -1701,6 +1739,222 @@ function cancelSimpleMFA() {
   document.getElementById('simple-mfa-error').classList.remove('show');
   const btn = document.querySelector('.login-btn');
   if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+}
+
+
+
+// ══════════════════════════════════════════
+// PASSKEY / WEBAUTHN BIOMETRIC MFA
+// ══════════════════════════════════════════
+let passkeyEmail = '';
+let passkeyChallenge = null;
+let passkeyCredentialId = null;
+
+// Check if browser supports WebAuthn
+function supportsPasskey() {
+  return window.PublicKeyCredential !== undefined &&
+         typeof window.PublicKeyCredential === 'function';
+}
+
+// Check if user has a saved passkey credential
+async function hasPasskeyStored(email) {
+  try {
+    const stored = localStorage.getItem('xcorp_passkey_' + btoa(email).replace(/=/g,''));
+    return stored ? JSON.parse(stored) : null;
+  } catch(e) { return null; }
+}
+
+// Save passkey credential ID after registration
+function savePasskeyCredential(email, credentialId) {
+  try {
+    localStorage.setItem(
+      'xcorp_passkey_' + btoa(email).replace(/=/g,''),
+      JSON.stringify({ credentialId, registeredAt: new Date().toISOString() })
+    );
+  } catch(e) { console.error('Save passkey error:', e); }
+}
+
+// Generate random challenge
+function generateChallenge() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return arr;
+}
+
+// Register a new passkey for this device
+async function registerPasskey(email) {
+  try {
+    const challenge = generateChallenge();
+    const userId = new TextEncoder().encode(email);
+
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'X-Corp Asset System', id: window.location.hostname },
+        user: { id: userId, name: email, displayName: email },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },   // ES256
+          { alg: -257, type: 'public-key' }  // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform', // device biometrics only
+          userVerification: 'required',
+          residentKey: 'preferred'
+        },
+        timeout: 60000,
+        attestation: 'none'
+      }
+    });
+
+    if (credential) {
+      // Save credential ID for future logins
+      const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      savePasskeyCredential(email, credId);
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.error('Passkey register error:', e.name, e.message);
+    return false;
+  }
+}
+
+// Verify existing passkey
+async function verifyPasskey(email) {
+  try {
+    const challenge = generateChallenge();
+    passkeyChallenge = challenge;
+
+    const credData = await hasPasskeyStored(email);
+    const allowCredentials = credData ? [{
+      id: Uint8Array.from(atob(credData.credentialId), c => c.charCodeAt(0)),
+      type: 'public-key',
+      transports: ['internal']
+    }] : [];
+
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        rpId: window.location.hostname,
+        allowCredentials,
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+
+    return assertion !== null;
+  } catch(e) {
+    console.error('Passkey verify error:', e.name, e.message);
+    if (e.name === 'NotAllowedError') return 'cancelled';
+    return false;
+  }
+}
+
+// Show passkey screen after Firebase auth
+async function showPasskeyScreen(email) {
+  passkeyEmail = email;
+  const errEl = document.getElementById('passkey-error');
+  const succEl = document.getElementById('passkey-success');
+  const subEl = document.getElementById('passkey-sub');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  // Check if user has passkey registered
+  const stored = await hasPasskeyStored(email);
+
+  if (stored) {
+    subEl.textContent = 'Use your device biometrics, PIN or security key to verify.';
+    document.getElementById('passkey-btn').innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Verify with Biometrics';
+  } else {
+    subEl.textContent = 'Set up biometric sign-in on this device for faster, more secure access.';
+    document.getElementById('passkey-btn').innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Set Up Biometrics';
+  }
+
+  document.getElementById('passkey-screen').classList.add('open');
+}
+
+// Trigger passkey verify or register
+async function triggerPasskey() {
+  const btn = document.getElementById('passkey-btn');
+  const errEl = document.getElementById('passkey-error');
+  const succEl = document.getElementById('passkey-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader" style="font-size:20px"></i> Verifying…';
+
+  const stored = await hasPasskeyStored(passkeyEmail);
+
+  if (stored) {
+    // Verify existing passkey
+    const result = await verifyPasskey(passkeyEmail);
+    if (result === true) {
+      // Passkey verified - complete login
+      succEl.textContent = '✅ Biometric verified — signing in…';
+      succEl.style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('passkey-screen').classList.remove('open');
+        completeMFAVerified();
+      }, 800);
+    } else if (result === 'cancelled') {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Verify with Biometrics';
+      errEl.textContent = 'Verification cancelled. Please try again.';
+      errEl.style.display = 'block';
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Verify with Biometrics';
+      errEl.textContent = 'Biometric verification failed. Try the code instead.';
+      errEl.style.display = 'block';
+    }
+  } else {
+    // Register new passkey
+    const registered = await registerPasskey(passkeyEmail);
+    if (registered) {
+      succEl.textContent = '✅ Biometrics set up! Signing in…';
+      succEl.style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('passkey-screen').classList.remove('open');
+        completeMFAVerified();
+      }, 800);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Set Up Biometrics';
+      errEl.textContent = 'Could not set up biometrics on this device. Use the code instead.';
+      errEl.style.display = 'block';
+    }
+  }
+}
+
+// Skip to traditional MFA code
+function skipToMFA() {
+  document.getElementById('passkey-screen').classList.remove('open');
+  showSimpleMFA(passkeyEmail);
+}
+
+// Cancel passkey - go back to login
+function cancelPasskey() {
+  document.getElementById('passkey-screen').classList.remove('open');
+  passkeyEmail = '';
+  mfaVerified = false;
+  firebase.auth().signOut();
+  sessionStorage.clear();
+  const btn = document.querySelector('.login-btn');
+  if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+}
+
+// Complete login after passkey or MFA verified
+function completeMFAVerified() {
+  mfaVerified = true;
+  simpleMFACode = '';
+  sessionStorage.removeItem('_tmp_p');
+  if (assetsRef) assetsRef.on('value', snap => { assets=snap.val()||{}; updateStats(); renderAssets(); renderSerials(); populateIssueSelects(); });
+  if (empRef) empRef.on('value', snap => { employees=snap.val()||{}; renderEmployees(); populateIssueSelects(); renderAssets(); renderSerials(); });
+  if (histRef) histRef.on('value', snap => { historyLog=snap.val()||{}; renderHistory(); });
+  setSyncStatus('live', 'Live sync');
+  showApp();
+  startSession();
+  showToast('✅ Signed in securely');
 }
 
 
@@ -1782,6 +2036,26 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
     <button class="login-btn" onclick="sendResetEmail()" style="margin-top:16px">Send Reset Link</button>
     <div style="text-align:center;margin-top:16px">
       <button onclick="closeForgotPassword()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;font-family:inherit">← Back to Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSKEY / BIOMETRIC SCREEN -->
+<div class="passkey-screen" id="passkey-screen">
+  <div class="passkey-card">
+    <div class="passkey-icon">🔐</div>
+    <div class="passkey-title">Verify Your Identity</div>
+    <div class="passkey-sub" id="passkey-sub">Use your device biometrics, PIN or security key to sign in securely.</div>
+    <div class="passkey-error" id="passkey-error"></div>
+    <div class="passkey-success" id="passkey-success"></div>
+    <button class="passkey-btn" id="passkey-btn" onclick="triggerPasskey()">
+      <i class="ti ti-fingerprint" style="font-size:20px"></i>
+      Verify with Biometrics
+    </button>
+    <div class="passkey-or">or</div>
+    <button class="passkey-alt" onclick="skipToMFA()">Use verification code instead</button>
+    <div style="margin-top:16px">
+      <button onclick="cancelPasskey()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;font-family:inherit">← Back to Sign In</button>
     </div>
   </div>
 </div>
