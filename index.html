@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/png" href="https://lirp.cdn-website.com/c706051a/dms3rep/multi/opt/cropped-Xcorp-new-logo-1920w.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>X-Corp — Asset Management</title>
+<title>X-Corp | Asset Management</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -1933,6 +1933,30 @@ function skipToMFA() {
   showSimpleMFA(passkeyEmail);
 }
 
+// Skip biometrics: email + password sign-in already succeeded
+function skipBiometrics() {
+  document.getElementById('passkey-screen').classList.remove('open');
+  completeMFAVerified();
+}
+
+// Clear the saved passkey on this browser so it can be set up again
+function resetPasskey() {
+  if (!passkeyEmail) return;
+  if (!confirm('Reset biometrics on this device? You will be asked to set them up again.')) return;
+  try {
+    localStorage.removeItem('xcorp_passkey_' + btoa(passkeyEmail).replace(/=/g,''));
+  } catch(e) { console.error('Reset passkey error:', e); }
+  const errEl = document.getElementById('passkey-error');
+  const succEl = document.getElementById('passkey-success');
+  const btn = document.getElementById('passkey-btn');
+  errEl.style.display = 'none';
+  succEl.textContent = '✅ Biometrics reset. Tap Set Up Biometrics to register again.';
+  succEl.style.display = 'block';
+  document.getElementById('passkey-sub').textContent = 'Set up biometric sign-in on this device for faster, more secure access.';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-fingerprint" style="font-size:20px"></i> Set Up Biometrics';
+}
+
 // Cancel passkey - go back to login
 function cancelPasskey() {
   document.getElementById('passkey-screen').classList.remove('open');
@@ -2054,7 +2078,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
       Verify with Biometrics
     </button>
 
-    <div style="margin-top:16px">
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;align-items:center">
+      <button onclick="skipBiometrics()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline">Continue with email &amp; password only</button>
+      <button onclick="resetPasskey()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline">Reset biometrics on this device</button>
       <button onclick="cancelPasskey()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;font-family:inherit">← Back to Sign In</button>
     </div>
   </div>
